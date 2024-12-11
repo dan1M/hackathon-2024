@@ -18,3 +18,70 @@
   padding: 2rem;
   text-align: center;
 }
+
+.fc-event {
+  background-color: #007bff !important; /* Bootstrap primary color */
+  color: white !important;
+  border: 1px solid #0056b3 !important; /* Subtle border */
+}
+
+.fc-event:hover {
+  background-color: #0056b3 !important; /* Darker blue on hover */
+  cursor: pointer; /* Pointer cursor */
+}
+
+.fc-daygrid-day:hover {
+  background-color: #f8f9fa !important; /* Bootstrap light background on hover */
+}
+
+.fc-day-today {
+  background-color: #343a40 !important; /* Highlight current day */
+  color: white !important;
+}
+
+.modal-body ul {
+  padding: 0;
+}
+
+.modal-body .list-group-item {
+  border: none; /* Remove borders from list items */
+}
+
+.modal-footer .btn {
+  border-radius: 0.25rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 1rem;
+}
+
+.modal-footer .btn-primary {
+  background-color: #007bff;
+  border: none;
+}
+
+.modal-footer .btn-secondary {
+  background-color: #6f8497;
+  border: none;
+}
+
+.past-event {
+  background-color: #ffd700 !important; /* Yellow for past courses */
+  color: black !important;
+  border: none !important;
+}
+
+.conflict-event {
+  background-color: #ff4d4f !important; /* Red for conflicts */
+  color: white !important;
+  border: none !important;
+}
+
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+    text-align: left; /* Align text to the left for smaller screens */
+  }
+
+  .fc-event {
+    font-size: 0.8rem; /* Reduce font size for events on smaller screens */
+  }
+}
