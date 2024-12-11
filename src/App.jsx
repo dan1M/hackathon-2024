@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import Login from './pages/login';
+import Header from './components/header';
+import Footer from './components/footer';
 
 function App() {
   const [users, setUsers] = useState([]);
@@ -16,12 +19,9 @@ function App() {
 
   return (
     <>
-      <h1>HACKATHON TEST</h1>
-      <ul>
-        {users.map((user) => (
-          <li key={user.id}>{user.email}</li>
-        ))}
-      </ul>
+      <Header />
+
+      <Footer />
     </>
   );
 }
