@@ -1,0 +1,93 @@
+/* Dashboard.css */
+
+/* Style général */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+    color: #777;
+  }
+  
+  /* Section du Dashboard */
+  .dashboard-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+  
+  h1 {
+    color: #333;
+    text-align: center;
+    font-size: 32px;
+  }
+  
+  /* Tableau des utilisateurs */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  
+  th, td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  th {
+    background-color: black;
+    color: white;
+    font-size: 16px;
+  }
+  
+  td {
+    font-size: 14px;
+    color: #333;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  /* Boutons d'action */
+  button {
+    background-color: darkblue;
+    color: white;
+    padding: 8px 15px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 1rem;
+  }
+  
+  button:hover {
+    background-color: lightskyblue;
+  }
+  
+  /* Bouton supprimer */
+  button.delete {
+    background-color: #dc3545;
+  }
+  
+  button.delete:hover {
+    background-color: lightsalmon;
+  }
+  
+  /* Cacher les messages de no users */
+  .no-users-message {
+    text-align: center;
+    font-size: 18px;
+    color: #777;
+    padding: 20px;
+  }
+  
