@@ -18,17 +18,17 @@ const Planning = () => {
   const [events, setEvents] = useState([
     {
       id: 1,
-      title: 'Cours de Mathématiques',
+      title: 'Cours de DeVops',
       start: '2024-12-11T08:00:00',
       end: '2024-12-11T09:00:00',
-      description: 'Introduction aux mathématiques.',
+      description: 'Introduction aux SQL.',
     },
     {
       id: 2,
-      title: 'Cours de Physique',
+      title: 'Cours de React',
       start: '2024-12-11T09:15:00',
       end: '2024-12-11T10:15:00',
-      description: 'Physique de base.',
+      description: 'react de base.',
     },
   ]);
 
