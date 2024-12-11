@@ -1,218 +1,258 @@
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid'; // For month view
 import timeGridPlugin from '@fullcalendar/timegrid'; // For week/day view
+import dayGridPlugin from '@fullcalendar/daygrid'; // For month view
 import interactionPlugin from '@fullcalendar/interaction'; // For interactions
 import { Modal, Button, Form } from 'react-bootstrap';
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase initialization
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 const Planning = () => {
-  const [showEventModal, setShowEventModal] = useState(false); // Event modal visibility
+  const [events, setEvents] = useState([]); // Calendar events
+  const [courses, setCourses] = useState([]); // Courses data
+  const [slots, setSlots] = useState({ start: "08:00", end: "19:00" }); // Default slots
   const [eventForm, setEventForm] = useState({
     id: null,
     title: '',
     start: '',
     end: '',
     description: '',
+    courseId: null, // To link to a course
   });
+  const [showEventModal, setShowEventModal] = useState(false);
 
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: 'Cours de DeVops',
-      start: '2024-12-11T08:00:00',
-      end: '2024-12-11T09:00:00',
-      description: 'Introduction aux SQL.',
-    },
-    {
-      id: 2,
-      title: 'Cours de React',
-      start: '2024-12-11T09:15:00',
-      end: '2024-12-11T10:15:00',
-      description: 'react de base.',
-    },
-  ]);
-
-  const [courseList, setCourseList] = useState([
-    { id: 'course-1', title: 'Nouveau Cours A', description: 'Description du cours A' },
-    { id: 'course-2', title: 'Nouveau Cours B', description: 'Description du cours B' },
-  ]);
-
-  // Make sidebar items draggable
-  useEffect(() => {
-    const draggableElements = document.querySelectorAll('.course-list li');
-    draggableElements.forEach((el) => {
-      el.setAttribute(
-        'data-event',
-        JSON.stringify({
-          title: el.dataset.title,
-          description: el.dataset.description,
-        })
-      );
-    });
-  }, [courseList]);
-
-  // Handle event click to show details in a modal
-  const handleEventClick = (info) => {
-    const event = events.find((e) => e.id === parseInt(info.event.id));
-    setEventForm({
-      ...event,
-      start: event.start.slice(11, 16), // Extract time from full datetime
-      end: event.end.slice(11, 16), // Extract time from full datetime
-    });
-    setShowEventModal(true);
+  // Fetch lessons, courses, and slots from Supabase
+  const fetchLessons = async () => {
+    try {
+      const { data: lessons, error } = await supabase
+        .from('lessons')
+        .select('*, courses(name)'); // Use Supabase relationship to fetch course name
+  
+      if (error) throw error;
+  
+      const transformedEvents = lessons.map((lesson) => ({
+        id: lesson.id,
+        title: lesson.courses?.name || `Lesson ${lesson.course_id}`, // Show course name
+        start: `${lesson.date}T${lesson.start_time}`,
+        end: `${lesson.date}T${lesson.end_time}`,
+        extendedProps: { courseId: lesson.course_id },
+      }));
+      setEvents(transformedEvents);
+    } catch (error) {
+      console.error('Error fetching lessons:', error);
+    }
   };
 
-  // Save event changes
-  const handleSaveEvent = () => {
-    const startFull = `2024-12-11T${eventForm.start}:00`; // Append default date
-    const endFull = `2024-12-11T${eventForm.end}:00`; // Append default date
+  const fetchCourses = async () => {
+    try {
+      const { data: fetchedCourses, error } = await supabase.from('courses').select('*');
+      if (error) throw error;
+      setCourses(fetchedCourses);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
 
-    const updatedEvent = { ...eventForm, start: startFull, end: endFull };
+  const fetchSlots = async () => {
+    try {
+      const { data: fetchedSlots, error } = await supabase.from('slots').select('*');
+      if (error) throw error;
 
-    if (eventForm.id) {
-      // Update existing event
+      if (fetchedSlots.length > 0) {
+        const earliestSlot = fetchedSlots.reduce((prev, curr) =>
+          curr.start_time < prev.start_time ? curr : prev
+        );
+        const latestSlot = fetchedSlots.reduce((prev, curr) =>
+          curr.end_time > prev.end_time ? curr : prev
+        );
+
+        setSlots({
+          start: earliestSlot.start_time,
+          end: latestSlot.end_time,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching slots:', error);
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchLessons();
+    fetchCourses();
+    fetchSlots();
+  }, []);
+
+  // Handle event drop to update lesson date and time
+  const handleEventDrop = async (info) => {
+    const { id } = info.event;
+    const newStart = info.event.start;
+    const newEnd = info.event.end;
+  
+    // Format date and time for the database
+    const newDate = newStart.toISOString().split('T')[0];
+    const newStartTime = newStart.toTimeString().split(' ')[0]; // Correctly format time
+    const newEndTime = newEnd?.toTimeString().split(' ')[0] || '23:59:59';
+  
+    try {
+      // Update the lesson in Supabase
+      const { error } = await supabase
+        .from('lessons')
+        .update({
+          date: newDate,
+          start_time: newStartTime,
+          end_time: newEndTime,
+        })
+        .eq('id', id);
+  
+      if (error) throw error;
+  
+      // Update local events state
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
-          event.id === eventForm.id ? updatedEvent : event
+          event.id === parseInt(id)
+            ? {
+                ...event,
+                start: info.event.start.toISOString(),
+                end: info.event.end?.toISOString() || `${newDate}T23:59:59`,
+              }
+            : event
         )
       );
-    } else {
-      // Add new event
-      setEvents((prevEvents) => [
-        ...prevEvents,
-        { ...updatedEvent, id: new Date().getTime() },
-      ]);
+  
+      // Display alert with correct time and date
+      alert(
+        `Lesson updated successfully:\nDate: ${newDate}\nStart Time: ${newStartTime}\nEnd Time: ${newEndTime}`
+      );
+    } catch (error) {
+      console.error('Error updating lesson:', error);
+      alert('Failed to update lesson. Changes have been reverted.');
+      // Revert the drag operation if update fails
+      info.revert();
     }
-    setShowEventModal(false);
   };
+  
 
-  // Delete event
-  const handleDeleteEvent = () => {
-    setEvents((prevEvents) =>
-      prevEvents.filter((event) => event.id !== eventForm.id)
-    );
+  // Handle saving changes to course in modal
+  const handleSaveEvent = async () => {
+    const { id, courseId, start, end } = eventForm;
+
+    if (id && courseId) {
+      try {
+        // Update the course_id in Supabase
+        const { error } = await supabase
+          .from('lessons')
+          .update({ course_id: courseId })
+          .eq('id', id);
+
+        if (error) {
+          console.error('Error updating course_id:', error);
+          alert('Failed to update the course. Please try again.');
+          return;
+        }
+
+        // Update the event in the state
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === id
+              ? { ...event, title: courses.find((c) => c.id === courseId)?.name }
+              : event
+          )
+        );
+
+        alert('Course updated successfully in Supabase.');
+      } catch (error) {
+        console.error('Error saving course changes:', error.message);
+      }
+    }
+
     setShowEventModal(false);
-  };
-
-  // Handle drop from sidebar into the calendar
-  const handleDrop = (info) => {
-    const eventObject = JSON.parse(info.draggedEl.getAttribute('data-event'));
-
-    const newEvent = {
-      id: new Date().getTime(),
-      title: eventObject.title,
-      start: info.dateStr + 'T08:00:00', // Default time
-      end: info.dateStr + 'T09:00:00', // Default time
-      description: eventObject.description || 'Aucun détail ajouté.',
-    };
-
-    setEvents((prevEvents) => [...prevEvents, newEvent]);
   };
 
   return (
-    <div className="container mt-4 d-flex">
-      {/* Sidebar for Course List */}
-      <div className="course-list p-3 border-end" style={{ width: '300px' }}>
-        <h5>Cours Disponibles</h5>
-        <ul className="list-unstyled">
-          {courseList.map((course) => (
-            <li
-              key={course.id}
-              className="mb-3 p-2 bg-light border"
-              data-title={course.title}
-              data-description={course.description}
-              draggable="true"
-              style={{ cursor: 'grab' }}
-            >
-              <strong>{course.title}</strong>
-              <p className="mb-0">{course.description}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="container mt-4">
+      <FullCalendar
+        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek" // Default to week view
+        locale="fr" // French locale
+        allDaySlot={false} // Remove "all-day" row
+        editable={true} // Allow event editing
+        events={events} // Lessons as calendar events
+        slotMinTime={slots.start} // Dynamic start time based on slots
+        slotMaxTime={slots.end} // Dynamic end time based on slots
+        height="auto" // Adjust height dynamically to remove scroll
+        headerToolbar={{
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay', // Add month view
+        }}
+        eventClick={(info) => {
+          const event = events.find((e) => e.id === parseInt(info.event.id));
+          const linkedCourse = courses.find((course) => course.id === event.extendedProps.courseId);
 
-      {/* Calendar */}
-      <div className="calendar-container flex-grow-1">
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          locale="fr" // Set to French
-          allDaySlot={false} // Remove the "all-day" row
-          editable={true}
-          droppable={true} // Allow items to be dropped onto the calendar
-          events={events.map((event) => ({
-            ...event,
-            id: String(event.id),
-          }))}
-          eventClick={handleEventClick} // Show popup on event click
-          drop={handleDrop} // Handle drop from the sidebar
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-        />
-      </div>
+          setEventForm({
+            id: event.id,
+            title: linkedCourse?.name || '',
+            description: linkedCourse?.description || '',
+            start: event.start.slice(11, 16), // Extract time
+            end: event.end.slice(11, 16), // Extract time
+            courseId: linkedCourse?.id || null,
+          });
+          setShowEventModal(true);
+        }}
+        eventDrop={handleEventDrop} // Handle drag-and-drop updates
+      />
 
-      {/* Modal for Adding/Editing Event */}
+      {/* Modal for Viewing/Editing Lesson */}
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{eventForm.id ? 'Modifier le cours' : 'Ajouter un cours'}</Modal.Title>
+          <Modal.Title>Modifier le cours</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
             <Form.Group controlId="eventTitle" className="mb-3">
-              <Form.Label>Titre</Form.Label>
-              <Form.Control
-                type="text"
-                name="title"
-                value={eventForm.title}
-                onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-              />
-            </Form.Group>
-            <Form.Group controlId="eventStart" className="mb-3">
-              <Form.Label>Heure de début</Form.Label>
-              <Form.Control
-                type="time"
-                name="start"
-                value={eventForm.start}
-                onChange={(e) => setEventForm({ ...eventForm, start: e.target.value })}
-              />
-            </Form.Group>
-            <Form.Group controlId="eventEnd" className="mb-3">
-              <Form.Label>Heure de fin</Form.Label>
-              <Form.Control
-                type="time"
-                name="end"
-                value={eventForm.end}
-                onChange={(e) => setEventForm({ ...eventForm, end: e.target.value })}
-              />
+              <Form.Label>Nom du Cours</Form.Label>
+              <Form.Select
+                name="courseId"
+                value={eventForm.courseId || ''}
+                onChange={(e) => {
+                  const selectedCourse = courses.find((course) => course.id === parseInt(e.target.value));
+                  setEventForm({
+                    ...eventForm,
+                    courseId: selectedCourse?.id,
+                    title: selectedCourse?.name,
+                    description: selectedCourse?.description,
+                  });
+                }}
+              >
+                <option value="">-- Sélectionner un cours --</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.name}
+                  </option>
+                ))}
+              </Form.Select>
             </Form.Group>
             <Form.Group controlId="eventDescription" className="mb-3">
-              <Form.Label>Description</Form.Label>
+              <Form.Label>Description du Cours</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
                 name="description"
                 value={eventForm.description}
-                onChange={(e) =>
-                  setEventForm({ ...eventForm, description: e.target.value })
-                }
+                onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
               />
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          {eventForm.id && (
-            <Button variant="danger" onClick={handleDeleteEvent}>
-              Supprimer
-            </Button>
-          )}
           <Button variant="secondary" onClick={() => setShowEventModal(false)}>
             Fermer
           </Button>
           <Button variant="primary" onClick={handleSaveEvent}>
-            Enregistrer
+            Enregistrer les modifications
           </Button>
         </Modal.Footer>
       </Modal>
