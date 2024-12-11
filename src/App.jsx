@@ -18,7 +18,7 @@ function App() {
   }, []);
 
   const getUsers = async () => {
-    const { data, error } = await supabase.from('users').select();
+    const { data, error } = await supabase.from('users_hackathon').select();
     if (error) 
       console.error('error', error);
     else setUsers(data);

@@ -10,7 +10,7 @@ function Dashboard() {
   }, []);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase.from('users').select();
+    const { data, error } = await supabase.from('users_hackathon').select();
     if (error) {
       console.error('Error fetching users:', error);
     } else {
@@ -29,7 +29,7 @@ function Dashboard() {
   };
 
   const handleDelete = async (userId) => {
-    const { error } = await supabase.from('users').delete().eq('id', userId);
+    const { error } = await supabase.from('users_hackathon').delete().eq('id', userId);
     if (error) {
       console.error('Error deleting user:', error);
     } else {
