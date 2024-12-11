@@ -15,17 +15,19 @@ const Login = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-header">
-        <h1>{isSignUp ? "Inscription" : "Connexion"}</h1>
-      </div>
       <main className="auth-main">
-        <div className="auth-form-container">
+      <div className="auth-form-container">
+        <header className="auth-header">
+          <h1>{isSignUp ? "Inscription" : "Connexion"}</h1>
+        </header>
+        <main>
           <Form
             isSignUp={isSignUp}
             onSubmit={handleAuth}
             toggleForm={() => setIsSignUp(!isSignUp)}
           />
-        </div>
+        </main>
+      </div>
       </main>
     </div>
   );

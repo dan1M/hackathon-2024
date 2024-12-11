@@ -44,6 +44,7 @@ const Form = ({ isSignUp, onSubmit, toggleForm }) => {
             >
               <option value="student">Étudiant</option>
               <option value="teacher">Professeur</option>
+              <option value="admin">Admin</option>
             </select>
           </div>
         </>
