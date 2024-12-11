@@ -94,6 +94,16 @@ body {
     color: #fff;
   }
 
+  .home-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #111;
+    color: #fff;
+    font-size: 1.5rem;
+  }
+  
   @media (max-width: 768px) {
     .auth-form-container {
       width: 95%;
