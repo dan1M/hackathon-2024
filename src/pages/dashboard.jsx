@@ -1,12 +1,33 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import '../assets/styles/Dashboard.css'; 
+import '../assets/styles/Dashboard.css';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function Dashboard() {
   const [users, setUsers] = useState([]);
+  const [coursesData, setCoursesData] = useState({ labels: [], datasets: [] });
 
   useEffect(() => {
     fetchUsers();
+    fetchCourses();
   }, []);
 
   const fetchUsers = async () => {
@@ -14,17 +35,38 @@ function Dashboard() {
     if (error) {
       console.error('Error fetching users:', error);
     } else {
-      // Trier les utilisateurs par rôle (admin, teacher, student)
       const sortedUsers = data.sort((a, b) => {
-        const rolesOrder = ['admin', 'teacher', 'student']; // Définir l'ordre des rôles
+        const rolesOrder = ['admin', 'teacher', 'student'];
         return rolesOrder.indexOf(a.role) - rolesOrder.indexOf(b.role);
       });
       setUsers(sortedUsers);
     }
   };
 
+  const fetchCourses = async () => {
+    const { data, error } = await supabase.from('courses').select();
+    if (error) {
+      console.error('Error fetching courses:', error);
+    } else {
+      const courseNames = data.map(course => course.name);
+      const courseHourlyVolumes = data.map(course => course.hourly_volume); // Utiliser l'attribut hourly_volume pour l'axe des ordonnées
+
+      setCoursesData({
+        labels: courseNames,
+        datasets: [
+          {
+            label: 'Volume horaire (heures)',
+            data: courseHourlyVolumes,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+          },
+        ],
+      });
+    }
+  };
+
   const handleEdit = (userId) => {
-    // Logique pour éditer un utilisateur
     console.log(`Edit user with id: ${userId}`);
   };
 
@@ -41,6 +83,29 @@ function Dashboard() {
     <div className="dashboard-container">
       <h1>Dashboard</h1>
       <p>Bienvenue dans le tableau de bord</p>
+
+      <div className="courses-container"></div>
+
+      {/* Diagramme des cours de l'utilisateur */}
+      <div className="courses-chart">
+        <h2>Diagramme des cours</h2>
+        {coursesData.labels.length > 0 ? (
+          <Bar data={coursesData} options={{
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: true,
+                text: 'Volume horaire par cours',
+              },
+            },
+          }} />
+        ) : (
+          <p>Chargement des données du diagramme...</p>
+        )}
+      </div>
 
       {/* Tableau des utilisateurs */}
       <table>
