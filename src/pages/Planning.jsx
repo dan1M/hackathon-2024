@@ -6,7 +6,6 @@ import interactionPlugin from '@fullcalendar/interaction'; // For interactions
 import { Modal, Button, Form } from 'react-bootstrap';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase initialization
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 const Planning = () => {
@@ -29,9 +28,9 @@ const Planning = () => {
       const { data: lessons, error } = await supabase
         .from('lessons')
         .select('*, courses(name)'); // Use Supabase relationship to fetch course name
-  
+
       if (error) throw error;
-  
+
       const transformedEvents = lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.courses?.name || `Lesson ${lesson.course_id}`, // Show course name
@@ -90,12 +89,12 @@ const Planning = () => {
     const { id } = info.event;
     const newStart = info.event.start;
     const newEnd = info.event.end;
-  
+
     // Format date and time for the database
     const newDate = newStart.toISOString().split('T')[0];
     const newStartTime = newStart.toTimeString().split(' ')[0]; // Correctly format time
     const newEndTime = newEnd?.toTimeString().split(' ')[0] || '23:59:59';
-  
+
     try {
       // Update the lesson in Supabase
       const { error } = await supabase
@@ -106,9 +105,9 @@ const Planning = () => {
           end_time: newEndTime,
         })
         .eq('id', id);
-  
+
       if (error) throw error;
-  
+
       // Update local events state
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
@@ -121,7 +120,7 @@ const Planning = () => {
             : event
         )
       );
-  
+
       // Display alert with correct time and date
       alert(
         `Lesson updated successfully:\nDate: ${newDate}\nStart Time: ${newStartTime}\nEnd Time: ${newEndTime}`
@@ -133,42 +132,101 @@ const Planning = () => {
       info.revert();
     }
   };
-  
 
   // Handle saving changes to course in modal
   const handleSaveEvent = async () => {
-    const { id, courseId, start, end } = eventForm;
-
-    if (id && courseId) {
+    const { id, courseId, start, end, title, description } = eventForm;
+  
+    if (!start || !end || !courseId) {
+      alert('Please fill out all fields before saving.');
+      return;
+    }
+  
+    const newStartFull = `${eventForm.date}T${start}:00`; // Use the selected date
+    const newEndFull = `${eventForm.date}T${end}:00`; // Use the selected date
+  
+    if (id) {
+      // Update existing event
       try {
-        // Update the course_id in Supabase
         const { error } = await supabase
           .from('lessons')
-          .update({ course_id: courseId })
+          .update({
+            date: eventForm.date, // Update date
+            start_time: start,
+            end_time: end,
+            course_id: courseId,
+          })
           .eq('id', id);
-
-        if (error) {
-          console.error('Error updating course_id:', error);
-          alert('Failed to update the course. Please try again.');
-          return;
-        }
-
-        // Update the event in the state
+  
+        if (error) throw error;
+  
+        // Update the event in the local state
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
             event.id === id
-              ? { ...event, title: courses.find((c) => c.id === courseId)?.name }
+              ? { ...event, start: newStartFull, end: newEndFull, title }
               : event
           )
         );
-
-        alert('Course updated successfully in Supabase.');
+  
+        setShowEventModal(false);
+        alert('Course updated successfully!');
       } catch (error) {
-        console.error('Error saving course changes:', error.message);
+        console.error('Error updating event:', error);
+      }
+    } else {
+      // Add new event
+      try {
+        const { data, error } = await supabase
+          .from('lessons')
+          .insert({
+            date: eventForm.date, // Use selected date
+            start_time: start,
+            end_time: end,
+            course_id: courseId,
+          })
+          .select();
+  
+        if (error) throw error;
+  
+        // Add the new event to the local state
+        setEvents((prevEvents) => [
+          ...prevEvents,
+          {
+            id: data[0].id,
+            start: newStartFull,
+            end: newEndFull,
+            title: courses.find((course) => course.id === courseId)?.name || '',
+            description,
+          },
+        ]);
+  
+        setShowEventModal(false);
+        alert('Course added successfully!');
+      } catch (error) {
+        console.error('Error adding event:', error);
       }
     }
+  };
+  
 
-    setShowEventModal(false);
+  // Handle event delete
+  const handleDeleteEvent = async () => {
+    const { id } = eventForm;
+
+    if (id) {
+      try {
+        const { error } = await supabase.from('lessons').delete().eq('id', id);
+        if (error) throw error;
+
+        setEvents((prevEvents) => prevEvents.filter((event) => event.id !== id));
+        setShowEventModal(false);
+        alert('Course deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting event:', error);
+        alert('Failed to delete the course.');
+      }
+    }
   };
 
   return (
@@ -179,10 +237,21 @@ const Planning = () => {
         locale="fr" // French locale
         allDaySlot={false} // Remove "all-day" row
         editable={true} // Allow event editing
+        selectable={true} // Enable selecting empty blocks
+        select={(info) => {
+          setEventForm({
+            id: null, // Null because it's a new event
+            title: '', // Default title
+            description: '', // Default description
+            date: info.startStr.split('T')[0], // Extract date from the selected block
+            start: info.startStr.slice(11, 16), // Extract start time
+            end: info.endStr.slice(11, 16), // Extract end time
+            courseId: null, // No course selected yet
+          });
+          setShowEventModal(true); // Show the modal
+        }}
+        
         events={events} // Lessons as calendar events
-        slotMinTime={slots.start} // Dynamic start time based on slots
-        slotMaxTime={slots.end} // Dynamic end time based on slots
-        height="auto" // Adjust height dynamically to remove scroll
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
@@ -208,7 +277,7 @@ const Planning = () => {
       {/* Modal for Viewing/Editing Lesson */}
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Modifier le cours</Modal.Title>
+          <Modal.Title>{eventForm.id ? 'Modifier le cours' : 'Ajouter un cours'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
@@ -248,6 +317,11 @@ const Planning = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
+          {eventForm.id && (
+            <Button variant="danger" onClick={handleDeleteEvent}>
+              Supprimer
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => setShowEventModal(false)}>
             Fermer
           </Button>
