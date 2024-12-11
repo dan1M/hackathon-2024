@@ -4,8 +4,8 @@ import Navbar from './navbar';
 const Header = () => {
   return (
     <header>
-      <h2>Header</h2>
       <Navbar/>
+      <p>Solution de gestion de planning rapide, effice et transparente.</p>
       {/* Tu peux ajouter un sous-titre ou des informations supplémentaires ici */}
     </header>
   );

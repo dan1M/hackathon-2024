@@ -8,6 +8,7 @@ import Header from './components/header';
 import Footer from './components/footer';
 import Dashboard from './pages/dashboard';
 import Navbar from './components/navbar';
+import HomePage from './pages/HomePage';
 
 // L'import de BrowserRouter devrait être utilisé ici pour envelopper l'ensemble de l'application.
 function App() {
@@ -30,6 +31,7 @@ function App() {
       <Routes>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/homePage" element={<HomePage />} />
         {/* Ajoute d'autres routes si nécessaire */}
       </Routes>
       <Footer />
