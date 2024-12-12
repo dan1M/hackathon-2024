@@ -83,7 +83,7 @@ function HomePage() {
         <div className="hero-content">
           <h1>Bienvenue sur notre Plateforme</h1>
           <p>Votre tableau de bord pour gérer les cours, les utilisateurs et plus encore.</p>
-          <button className="cta-button">Explorer les fonctionnalités</button>
+          <button className="cta-button">Explorer les filieres</button>
         </div>
       </section>
 
@@ -141,8 +141,8 @@ function HomePage() {
       <section className="cta-section">
         <h2>Prêt à commencer ?</h2>
         <div className="cta-buttons">
-          <button className="cta-button">Accéder à mon planning</button>
-          <button className="cta-button">Voir les cours</button>
+          <button href="/login" className="cta-button">Accéder à mon compte</button>
+          <button href="/fields" className="cta-button">Découvrir les filieres</button>
         </div>
       </section>
     </div>

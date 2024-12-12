@@ -9,6 +9,8 @@ import Footer from './components/footer';
 import Dashboard from './pages/dashboard';
 import Navbar from './components/navbar';
 import HomePage from './pages/HomePage';
+import FilierePage from './pages/filiere';
+import ListeTeachers from './pages/listeTeachers';
 
 // L'import de BrowserRouter devrait être utilisé ici pour envelopper l'ensemble de l'application.
 function App() {
@@ -32,6 +34,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/homePage" element={<HomePage />} />
+        <Route path="/fields" element={<FilierePage />} />
+        <Route path="/teachers_list" element={<ListeTeachers />} />
         {/* Ajoute d'autres routes si nécessaire */}
       </Routes>
       <Footer />
