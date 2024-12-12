@@ -38,7 +38,7 @@
 .courses-chart, .calendar {
   flex: 1;
   min-width: 48%;
-  height: 400px; /* Fixe la hauteur des deux sections */
+  height: auto; /* Fixe la hauteur des deux sections */
   display: flex;
   flex-direction: column;
 }
