@@ -3,20 +3,21 @@ import React, { useState } from "react";
 import Input from "./LoginInput";
 import Button from "./LoginButton";
 import { supabase } from "../../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
-// eslint-disable-next-line react/prop-types
-const LoginForm = ({ isSignUp, toggleForm }) => {
+const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      // Vérification de l'email dans la base de données
+      // Vérification de l'utilisateur
       const { data, error } = await supabase
         .from("users_hackathon")
-        .select("email")
+        .select("email, name") 
         .eq("email", email);
 
       if (error) {
@@ -26,7 +27,8 @@ const LoginForm = ({ isSignUp, toggleForm }) => {
       }
 
       if (data.length > 0) {
-        alert("Connexion réussie !");
+        const userName = data[0].name; 
+        navigate("/home", { state: { name: userName } }); 
       } else {
         alert("Utilisateur non trouvé !");
       }
@@ -54,13 +56,7 @@ const LoginForm = ({ isSignUp, toggleForm }) => {
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Votre mot de passe"
       />
-      <Button type="submit">{isSignUp ? "S'inscrire" : "Se connecter"}</Button>
-      <p className="auth-toggle">
-        {isSignUp ? "Déjà un compte ?" : "Pas encore de compte ?"}{" "}
-        <span onClick={toggleForm}>
-          {isSignUp ? "Se connecter" : "S'inscrire"}
-        </span>
-      </p>
+      <Button type="submit">Se connecter</Button>
     </form>
   );
 };
