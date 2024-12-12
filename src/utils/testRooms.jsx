@@ -13,14 +13,28 @@ const TestRooms = () => {
       const date = '2024-12-12'; // Exemple de date
       const start_time = '9:30'; // Heure de début
       const end_time = '12:00'; // Heure de fin
-      const value = '2'
+      const value = '2';
 
       // Trouver les salles disponibles
-      const rooms = await findAvailableEntities('classroom', 'classroom_id', date, start_time, end_time, value);
+      const rooms = await findAvailableEntities(
+        'classroom',
+        'classroom_id',
+        date,
+        start_time,
+        end_time,
+        value
+      );
       setAvailableRooms(rooms); // Met à jour l'état avec les salles disponibles
 
       // Trouver les professeurs disponibles
-      const teachers = await findAvailableEntities('users_hackathon', 'teacher_id', date, start_time, end_time, value);
+      const teachers = await findAvailableEntities(
+        'users_hackathon',
+        'teacher_id',
+        date,
+        start_time,
+        end_time,
+        value
+      );
       //console.log(teachers)
       setAvailableTeachers(teachers); // Met à jour l'état avec les professeurs disponibles
     } catch (error) {
