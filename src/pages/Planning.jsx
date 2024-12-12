@@ -19,15 +19,21 @@ const Planning = () => {
     end: '',
     description: '',
     courseId: null, // To link to a course
+    teacherId: null,
+    classroomId: null,
+    classId: null,
   });
   const [showEventModal, setShowEventModal] = useState(false);
+  const [classrooms, setClassrooms] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [teacherAvailabilities, setTeacherAvailabilities] = useState([]);
 
   // Fetch lessons, courses, and slots from Supabase
   const fetchLessons = async () => {
     try {
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('*, courses(name)'); // Use Supabase relationship to fetch course name
+        .select('*, courses(name), users_hackathon(name), classroom(name), classes(name)'); // Use Supabase relationship to fetch course name
 
       if (error) throw error;
 
@@ -36,13 +42,34 @@ const Planning = () => {
         title: lesson.courses?.name || `Lesson ${lesson.course_id}`, // Show course name
         start: `${lesson.date}T${lesson.start_time}`,
         end: `${lesson.date}T${lesson.end_time}`,
-        extendedProps: { courseId: lesson.course_id },
+        extendedProps: {
+          courseId: lesson.course_id,
+          teacherId: lesson.teacher_id,
+          classroomId: lesson.classroom_id,
+          classId: lesson.class_id,
+        },
       }));
       setEvents(transformedEvents);
     } catch (error) {
       console.error('Error fetching lessons:', error);
     }
   };
+
+  const [teachers, setTeachers] = useState([]);
+
+const fetchTeachers = async () => {
+  try {
+    const { data: fetchedTeachers, error } = await supabase
+      .from('users_hackathon')
+      .select('id, name')
+      .eq('role', 'teacher');
+    if (error) throw error;
+    setTeachers(fetchedTeachers);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des professeurs:', error);
+  }
+};
+
 
   const fetchCourses = async () => {
     try {
@@ -77,11 +104,51 @@ const Planning = () => {
     }
   };
 
+  const fetchClassrooms = async () => {
+    try {
+      const { data: fetchedClassrooms, error } = await supabase
+        .from('classroom')
+        .select('id, name');
+      if (error) throw error;
+      setClassrooms(fetchedClassrooms);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des salles:', error);
+    }
+  };
+  
+  const fetchClasses = async () => {
+    try {
+      const { data: fetchedClasses, error } = await supabase
+        .from('classes')
+        .select('id, name'); // Récupère les IDs et noms des classes
+      if (error) throw error;
+      setClasses(fetchedClasses);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des classes:', error);
+    }
+  };
+  
+  const fetchTeacherAvailabilities = async () => {
+    try {
+      const { data: availabilities, error } = await supabase
+        .from('teacher_availabilities')
+        .select('*')
+        .eq('status', 'active'); // Récupérer uniquement les indisponibilités actives
+      if (error) throw error;
+      setTeacherAvailabilities(availabilities);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des indisponibilités:', error);
+    }
+  };
+  
   // Fetch data on component mount
   useEffect(() => {
     fetchLessons();
     fetchCourses();
     fetchSlots();
+    fetchTeachers();
+    fetchClassrooms();
+    fetchClasses();
   }, []);
 
   // Handle event drop to update lesson date and time
@@ -135,9 +202,14 @@ const Planning = () => {
 
   // Handle saving changes to course in modal
   const handleSaveEvent = async () => {
-    const { id, courseId, start, end, title, description } = eventForm;
+    const { id, courseId, teacherId, classroomId, classId , start, end, title, description } = eventForm;
   
-    if (!start || !end || !courseId) {
+    if (!start || !end || !courseId || !teacherId || !classroomId || !classId) {
+      console.log(start);
+      console.log(end);
+      console.log(courseId);
+      console.log(teacherId);
+      console.log(classroomId);
       alert('Please fill out all fields before saving.');
       return;
     }
@@ -155,6 +227,9 @@ const Planning = () => {
             start_time: start,
             end_time: end,
             course_id: courseId,
+            teacher_id: teacherId,
+            classroom_id: classroomId,
+            class_id: classId,
           })
           .eq('id', id);
   
@@ -184,6 +259,9 @@ const Planning = () => {
             start_time: start,
             end_time: end,
             course_id: courseId,
+            teacher_id: teacherId,
+            classroom_id: classroomId,
+            class_id: classId,
           })
           .select();
   
@@ -268,6 +346,9 @@ const Planning = () => {
             start: event.start.slice(11, 16), // Extract time
             end: event.end.slice(11, 16), // Extract time
             courseId: linkedCourse?.id || null,
+            teacherId: event.extendedProps.teacherId || null,
+            classroomId: event.extendedProps.classroomId || null,
+            classId: event.extendedProps.classId || null
           });
           setShowEventModal(true);
         }}
@@ -300,6 +381,51 @@ const Planning = () => {
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="classSelect" className="mb-3">
+              <Form.Label>Sélectionner une classe</Form.Label>
+              <Form.Select
+                name="classId"
+                value={eventForm.classId || ''}
+                onChange={(e) => setEventForm({ ...eventForm, classId: parseInt(e.target.value) })}
+              >
+                <option value="">-- Aucune classe assignée --</option>
+                {classes.map((classItem) => (
+                  <option key={classItem.id} value={classItem.id}>
+                    {classItem.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="teacherSelect" className="mb-3">
+              <Form.Label>Sélectionner un professeur</Form.Label>
+              <Form.Select
+                name="teacherId"
+                value={eventForm.teacherId || ''}
+                onChange={(e) => setEventForm({ ...eventForm, teacherId: parseInt(e.target.value) })}
+              >
+                <option value="">-- Aucun professeur assigné --</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="classroomSelect" className="mb-3">
+              <Form.Label>Sélectionner une salle</Form.Label>
+              <Form.Select
+                name="classroomId"
+                value={eventForm.classroomId || ''}
+                onChange={(e) => setEventForm({ ...eventForm, classroomId: parseInt(e.target.value) })}
+              >
+                <option value="">-- Aucune salle assignée --</option>
+                {classrooms.map((classroom) => (
+                  <option key={classroom.id} value={classroom.id}>
+                    {classroom.name}
                   </option>
                 ))}
               </Form.Select>
