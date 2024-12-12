@@ -1,27 +1,12 @@
-import { useEffect, useState } from 'react';
-import { supabase } from './utils/supabaseClient';
-import Header from './components/header';
-import Footer from './components/footer';
-import { generateClassAvailabilities } from './utils/generate-class-availabilities';
+import { generatePlanning } from './utils/generate-planning';
 
 function App() {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    getUsers();
-  }, []);
-
-  const getUsers = async () => {
-    const { data, error } = await supabase.from('users_hackathon').select();
-    if (error) console.error('error', error);
-    else setUsers(data);
-  };
-
   return (
     <>
-      <Header />
-
-      <Footer />
+      <h1>HACKATHON TEST</h1>
+      <button onClick={() => generatePlanning({ class_id: 1, week: 3 })}>
+        Test GENERATE PLANNING
+      </button>
     </>
   );
 }
