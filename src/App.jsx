@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
-import TestRooms from './utils/testRooms';
+import { generatePlanning } from './utils/generate-planning';
 
 function App() {
   return (
     <>
       <h1>HACKATHON TEST</h1>
-      <TestRooms />
+      <button onClick={() => generatePlanning({ class_id: 1, week: 3 })}>
+        Test GENERATE PLANNING
+      </button>
     </>
   );
 }
