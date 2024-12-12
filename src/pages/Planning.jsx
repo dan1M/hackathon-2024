@@ -12,6 +12,7 @@ const Planning = () => {
   const [events, setEvents] = useState([]); // Calendar events
   const [courses, setCourses] = useState([]); // Courses data
   const [slots, setSlots] = useState({ start: "08:00", end: "19:00" }); // Default slots
+  const [holidays, setHolidays] = useState([]); // French holidays
   const [eventForm, setEventForm] = useState({
     id: null,
     title: '',
@@ -22,18 +23,16 @@ const Planning = () => {
   });
   const [showEventModal, setShowEventModal] = useState(false);
 
-  // Fetch lessons, courses, and slots from Supabase
   const fetchLessons = async () => {
     try {
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('*, courses(name)'); // Use Supabase relationship to fetch course name
-
+        .select('*, courses(name)');
       if (error) throw error;
 
       const transformedEvents = lessons.map((lesson) => ({
         id: lesson.id,
-        title: lesson.courses?.name || `Lesson ${lesson.course_id}`, // Show course name
+        title: lesson.courses?.name || `Lesson ${lesson.course_id}`,
         start: `${lesson.date}T${lesson.start_time}`,
         end: `${lesson.date}T${lesson.end_time}`,
         extendedProps: { courseId: lesson.course_id },
@@ -77,26 +76,39 @@ const Planning = () => {
     }
   };
 
-  // Fetch data on component mount
+  const fetchHolidays = async () => {
+    const frenchHolidays = [
+      { title: 'Nouvel An', date: '2024-01-01' },
+      { title: 'Fête du Travail', date: '2024-05-01' },
+      { title: 'Fête Nationale', date: '2024-07-14' },
+      { title: 'Assomption', date: '2024-08-15' },
+      { title: 'Toussaint', date: '2024-11-01' },
+      { title: 'Noël', date: '2024-12-25' },
+    ];
+
+    const holidayDates = frenchHolidays.map((holiday) => holiday.date);
+    setHolidays(holidayDates);
+  };
+
   useEffect(() => {
     fetchLessons();
     fetchCourses();
     fetchSlots();
+    fetchHolidays();
   }, []);
 
-  // Handle event drop to update lesson date and time
+  const isHoliday = (date) => holidays.includes(date.toISOString().split('T')[0]);
+
   const handleEventDrop = async (info) => {
     const { id } = info.event;
     const newStart = info.event.start;
     const newEnd = info.event.end;
 
-    // Format date and time for the database
     const newDate = newStart.toISOString().split('T')[0];
-    const newStartTime = newStart.toTimeString().split(' ')[0]; // Correctly format time
+    const newStartTime = newStart.toTimeString().split(' ')[0];
     const newEndTime = newEnd?.toTimeString().split(' ')[0] || '23:59:59';
 
     try {
-      // Update the lesson in Supabase
       const { error } = await supabase
         .from('lessons')
         .update({
@@ -108,7 +120,6 @@ const Planning = () => {
 
       if (error) throw error;
 
-      // Update local events state
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
           event.id === parseInt(id)
@@ -121,46 +132,39 @@ const Planning = () => {
         )
       );
 
-      // Display alert with correct time and date
-      alert(
-        `Lesson updated successfully:\nDate: ${newDate}\nStart Time: ${newStartTime}\nEnd Time: ${newEndTime}`
-      );
+      alert(`Lesson updated successfully:\nDate: ${newDate}\nStart Time: ${newStartTime}\nEnd Time: ${newEndTime}`);
     } catch (error) {
       console.error('Error updating lesson:', error);
       alert('Failed to update lesson. Changes have been reverted.');
-      // Revert the drag operation if update fails
       info.revert();
     }
   };
 
-  // Handle saving changes to course in modal
   const handleSaveEvent = async () => {
     const { id, courseId, start, end, title, description } = eventForm;
-  
+
     if (!start || !end || !courseId) {
       alert('Please fill out all fields before saving.');
       return;
     }
-  
-    const newStartFull = `${eventForm.date}T${start}:00`; // Use the selected date
-    const newEndFull = `${eventForm.date}T${end}:00`; // Use the selected date
-  
+
+    const newStartFull = `${eventForm.date}T${start}:00`;
+    const newEndFull = `${eventForm.date}T${end}:00`;
+
     if (id) {
-      // Update existing event
       try {
         const { error } = await supabase
           .from('lessons')
           .update({
-            date: eventForm.date, // Update date
+            date: eventForm.date,
             start_time: start,
             end_time: end,
             course_id: courseId,
           })
           .eq('id', id);
-  
+
         if (error) throw error;
-  
-        // Update the event in the local state
+
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
             event.id === id
@@ -168,28 +172,26 @@ const Planning = () => {
               : event
           )
         );
-  
+
         setShowEventModal(false);
         alert('Course updated successfully!');
       } catch (error) {
         console.error('Error updating event:', error);
       }
     } else {
-      // Add new event
       try {
         const { data, error } = await supabase
           .from('lessons')
           .insert({
-            date: eventForm.date, // Use selected date
+            date: eventForm.date,
             start_time: start,
             end_time: end,
             course_id: courseId,
           })
           .select();
-  
+
         if (error) throw error;
-  
-        // Add the new event to the local state
+
         setEvents((prevEvents) => [
           ...prevEvents,
           {
@@ -200,7 +202,7 @@ const Planning = () => {
             description,
           },
         ]);
-  
+
         setShowEventModal(false);
         alert('Course added successfully!');
       } catch (error) {
@@ -208,9 +210,7 @@ const Planning = () => {
       }
     }
   };
-  
 
-  // Handle event delete
   const handleDeleteEvent = async () => {
     const { id } = eventForm;
 
@@ -233,29 +233,37 @@ const Planning = () => {
     <div className="container mt-4">
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek" // Default to week view
-        locale="fr" // French locale
-        allDaySlot={false} // Remove "all-day" row
-        editable={true} // Allow event editing
-        selectable={true} // Enable selecting empty blocks
+        initialView="timeGridWeek"
+        locale="fr"
+        allDaySlot={false}
+        editable={true}
+        selectable={true}
         select={(info) => {
+          if (isHoliday(new Date(info.start))) {
+            alert('You cannot add courses on holidays!');
+            return;
+          }
           setEventForm({
-            id: null, // Null because it's a new event
-            title: '', // Default title
-            description: '', // Default description
-            date: info.startStr.split('T')[0], // Extract date from the selected block
-            start: info.startStr.slice(11, 16), // Extract start time
-            end: info.endStr.slice(11, 16), // Extract end time
-            courseId: null, // No course selected yet
+            id: null,
+            title: '',
+            description: '',
+            date: info.startStr.split('T')[0],
+            start: info.startStr.slice(11, 16),
+            end: info.endStr.slice(11, 16),
+            courseId: null,
           });
-          setShowEventModal(true); // Show the modal
+          setShowEventModal(true);
         }}
-        
-        events={events} // Lessons as calendar events
+        dayCellClassNames={(info) => {
+          const date = new Date(info.date);
+          if (isHoliday(date)) return 'holiday-cell';
+          return '';
+        }}
+        events={events}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay', // Add month view
+          right: 'dayGridMonth,timeGridWeek,timeGridDay',
         }}
         eventClick={(info) => {
           const event = events.find((e) => e.id === parseInt(info.event.id));
@@ -265,16 +273,16 @@ const Planning = () => {
             id: event.id,
             title: linkedCourse?.name || '',
             description: linkedCourse?.description || '',
-            start: event.start.slice(11, 16), // Extract time
-            end: event.end.slice(11, 16), // Extract time
+            date: event.start.split('T')[0],
+            start: event.start.slice(11, 16),
+            end: event.end.slice(11, 16),
             courseId: linkedCourse?.id || null,
           });
           setShowEventModal(true);
         }}
-        eventDrop={handleEventDrop} // Handle drag-and-drop updates
+        eventDrop={handleEventDrop}
       />
 
-      {/* Modal for Viewing/Editing Lesson */}
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>{eventForm.id ? 'Modifier le cours' : 'Ajouter un cours'}</Modal.Title>
@@ -292,7 +300,6 @@ const Planning = () => {
                     ...eventForm,
                     courseId: selectedCourse?.id,
                     title: selectedCourse?.name,
-                    description: selectedCourse?.description,
                   });
                 }}
               >
@@ -330,6 +337,14 @@ const Planning = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <style>
+        {`
+          .holiday-cell {
+            background-color: #ffcccc !important; /* Light red */
+          }
+        `}
+      </style>
     </div>
   );
 };
