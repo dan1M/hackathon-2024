@@ -23,7 +23,7 @@ const Planning = () => {
     start: '',
     end: '',
     description: '',
-    courseId: null, // To link to a course
+    courseId: null,
     teacherId: null,
     classroomId: null,
     classId: null,
@@ -32,22 +32,24 @@ const Planning = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [classrooms, setClassrooms] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
 
-  // Fetch lessons, courses, and holidays
+  // Fetch data functions
   const fetchLessons = async () => {
     try {
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('*, courses(name), users_hackathon(name), classroom(name), classes(name)');
-  
+        .select('*, courses(name, description), users_hackathon(name), classroom(name), classes(name)');
+
       if (error) throw error;
-  
+
       const transformedEvents = lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.courses?.name || `Lesson ${lesson.course_id}`,
+        description: lesson.courses?.description || '',
         start: `${lesson.date}T${lesson.start_time}`,
         end: `${lesson.date}T${lesson.end_time}`,
-        color: lesson.color || '#007bff', // Use the color from the database or default to blue
+        color: lesson.color || '#007bff',
         extendedProps: {
           courseId: lesson.course_id,
           teacherId: lesson.teacher_id,
@@ -60,24 +62,19 @@ const Planning = () => {
       console.error('Error fetching lessons:', error);
     }
   };
-  
-  
 
-  const [teachers, setTeachers] = useState([]);
-
-const fetchTeachers = async () => {
-  try {
-    const { data: fetchedTeachers, error } = await supabase
-      .from('users_hackathon')
-      .select('id, name')
-      .eq('role', 'teacher');
-    if (error) throw error;
-    setTeachers(fetchedTeachers);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des professeurs:', error);
-  }
-};
-
+  const fetchTeachers = async () => {
+    try {
+      const { data: fetchedTeachers, error } = await supabase
+        .from('users_hackathon')
+        .select('id, name')
+        .eq('role', 'teacher');
+      if (error) throw error;
+      setTeachers(fetchedTeachers);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des professeurs:', error);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -91,25 +88,31 @@ const fetchTeachers = async () => {
 
   const fetchSlots = async () => {
     try {
-      const { data: fetchedSlots, error } = await supabase.from('time_slots').select('*');
+      const { data: fetchedSlots, error } = await supabase
+        .from('time_slots')
+        .select('start_time, end_time')
+        .order('start_time', { ascending: true });
+  
       if (error) throw error;
   
-      if (fetchedSlots.length > 0) {
-        const earliestSlot = fetchedSlots.reduce((prev, curr) =>
-          curr.start_time < prev.start_time ? curr : prev
-        );
-        const latestSlot = fetchedSlots.reduce((prev, curr) =>
-          curr.end_time > prev.end_time ? curr : prev
-        );
+      const formattedSlots = fetchedSlots.map((slot) => ({
+        start: slot.start_time.slice(0, 5),
+        end: slot.end_time.slice(0, 5),
+      }));
   
-        setSlots([
-          { start: earliestSlot.start_time, end: latestSlot.end_time },
-        ]);
-      }
+      setSlots(formattedSlots);
     } catch (error) {
       console.error('Error fetching slots:', error);
+  
+      // Use fallback default slots
+      setSlots([
+        { start: "09:00", end: "12:30" },
+        { start: "13:30", end: "17:00" },
+        { start: "17:15", end: "19:00" },
+      ]);
     }
   };
+  
   
 
   const fetchClassrooms = async () => {
@@ -123,7 +126,7 @@ const fetchTeachers = async () => {
       console.error('Erreur lors de la récupération des salles:', error);
     }
   };
-  
+
   const fetchClasses = async () => {
     try {
       const { data: fetchedClasses, error } = await supabase
@@ -135,6 +138,7 @@ const fetchTeachers = async () => {
       console.error('Erreur lors de la récupération des classes:', error);
     }
   };
+
   const fetchHolidays = async () => {
     const frenchHolidays = [
       { title: 'Nouvel An', date: '2024-01-01' },
@@ -148,7 +152,7 @@ const fetchTeachers = async () => {
     const holidayDates = frenchHolidays.map((holiday) => holiday.date);
     setHolidays(holidayDates);
   };
-  // Fetch data on component mount
+
   useEffect(() => {
     fetchLessons();
     fetchCourses();
@@ -157,28 +161,20 @@ const fetchTeachers = async () => {
     fetchClassrooms();
     fetchClasses();
     fetchHolidays();
-
   }, []);
 
-  const isSunday = (date) => date.getDay() === 0; // Sunday = 0
+  const isSunday = (date) => date.getDay() === 0;
   const isHoliday = (date) => holidays.includes(date.toISOString().split('T')[0]);
 
   const handleEventDrop = async (info) => {
     const { id } = info.event;
     const newStart = info.event.start;
     const newEnd = info.event.end;
-  
+
     const newDate = newStart.toISOString().split('T')[0];
     const newStartTime = newStart.toTimeString().split(' ')[0];
     const newEndTime = newEnd?.toTimeString().split(' ')[0] || '23:59:59';
-  
-    console.log("Event being updated:", {
-      id,
-      date: newDate,
-      start_time: newStartTime,
-      end_time: newEndTime,
-    });
-  
+
     try {
       const { error } = await supabase
         .from('lessons')
@@ -188,12 +184,9 @@ const fetchTeachers = async () => {
           end_time: newEndTime,
         })
         .eq('id', id);
-  
-      if (error) {
-        console.error("Error from Supabase:", error);
-        throw error;
-      }
-  
+
+      if (error) throw error;
+
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
           event.id === parseInt(id)
@@ -205,74 +198,96 @@ const fetchTeachers = async () => {
             : event
         )
       );
-  
-      alert(`Lesson updated successfully:\nDate: ${newDate}\nStart Time: ${newStartTime}\nEnd Time: ${newEndTime}`);
+
+      alert(`Lesson updated successfully!`);
     } catch (error) {
-      console.error("Error updating lesson:", error);
+      console.error('Error updating lesson:', error);
       alert('Failed to update lesson. Changes have been reverted.');
       info.revert();
     }
   };
-  
 
   const handleSaveEvent = async () => {
     const {
-      id,
+      start,
+      end,
       courseId,
       teacherId,
       classroomId,
       classId,
-      start,
-      end,
       date,
-      color, // Mapped to the 'color' column in the 'lessons' table
+      color,
     } = eventForm;
   
-    // Validation to ensure required fields are filled
+    const normalizeTime = (time) => time.slice(0, 5).trim();
+  
+    // Check if the lesson aligns with the slots
+    const isValidSlot = slots.some((slot, index) => {
+      // Single-slot validation
+      const matchesSingleSlot =
+        normalizeTime(slot.start) === normalizeTime(start) &&
+        normalizeTime(slot.end) === normalizeTime(end);
+  
+      // Multi-slot validation (lesson spans across multiple slots)
+      if (!matchesSingleSlot && index > 0) {
+        const previousSlot = slots[index - 1];
+        return (
+          normalizeTime(previousSlot.start) === normalizeTime(start) &&
+          normalizeTime(slot.end) === normalizeTime(end)
+        );
+      }
+  
+      return matchesSingleSlot;
+    });
+  
+    if (!isValidSlot) {
+      alert(`Les horaires sélectionnés (${start} - ${end}) ne respectent pas les créneaux disponibles !`);
+      return;
+    }
+  
+    // Ensure required fields are filled
     if (!start || !end || !courseId || !teacherId || !classroomId || !classId || !date) {
-      alert('Please fill out all fields before saving.');
+      alert('Veuillez remplir tous les champs obligatoires avant de sauvegarder.');
       return;
     }
   
     const lessonData = {
-      date, // Maps to 'date' column
-      start_time: start, // Maps to 'start_time' column
-      end_time: end, // Maps to 'end_time' column
-      course_id: courseId, // Maps to 'course_id' column
-      teacher_id: teacherId, // Maps to 'teacher_id' column
-      classroom_id: classroomId, // Maps to 'classroom_id' column
-      class_id: classId, // Maps to 'class_id' column
-      color, // Maps to 'color' column
+      date,
+      start_time: normalizeTime(start),
+      end_time: normalizeTime(end),
+      course_id: courseId,
+      teacher_id: teacherId,
+      classroom_id: classroomId,
+      class_id: classId,
+      color,
     };
   
     try {
-      if (id) {
-        // Updating an existing event
+      if (eventForm.id) {
+        // Update existing lesson
         const { error } = await supabase
           .from('lessons')
           .update(lessonData)
-          .eq('id', id);
+          .eq('id', eventForm.id);
   
         if (error) throw error;
   
-        // Update the events state with the updated event details
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
-            event.id === id
+            event.id === eventForm.id
               ? {
                   ...event,
                   ...lessonData,
-                  start: `${date}T${start}:00`,
-                  end: `${date}T${end}:00`,
-                  title: courses.find((course) => course.id === courseId)?.name || '', // Dynamically retrieve course name
+                  start: `${date}T${normalizeTime(start)}:00`,
+                  end: `${date}T${normalizeTime(end)}:00`,
                 }
               : event
           )
         );
   
-        alert('Event updated successfully!');
+        alert('Cours mis à jour avec succès !');
       } else {
-        // Adding a new event
+        // Create new lesson
         const { data, error } = await supabase
           .from('lessons')
           .insert(lessonData)
@@ -280,33 +295,25 @@ const fetchTeachers = async () => {
   
         if (error) throw error;
   
-        // Add the new event to the events state
         setEvents((prevEvents) => [
           ...prevEvents,
           {
             id: data[0].id,
             ...lessonData,
-            start: `${date}T${start}:00`,
-            end: `${date}T${end}:00`,
-            title: courses.find((course) => course.id === courseId)?.name || '', // Dynamically retrieve course name
+            start: `${date}T${normalizeTime(start)}:00`,
+            end: `${date}T${normalizeTime(end)}:00`,
           },
         ]);
   
-        alert('Event added successfully!');
+        alert('Cours ajouté avec succès !');
       }
   
       setShowEventModal(false);
     } catch (error) {
-      console.error('Error saving event:', error);
-      alert('Failed to save the event. Please try again.');
+      console.error('Erreur lors de la sauvegarde du cours :', error);
+      alert('Échec de la sauvegarde du cours. Veuillez réessayer.');
     }
   };
-  
-  
-  
-  
-  
-  
   
   
 
@@ -330,56 +337,74 @@ const fetchTeachers = async () => {
 
   return (
     <div className="container mt-4">
-        <FullCalendar
-          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          locale="fr"
-          firstDay={1} // Start the week on Monday
-          allDaySlot={false}
-          editable={true}
-          selectable={true}
-          slotMinTime={slots[0].start}
-          slotMaxTime={slots[slots.length - 1].end}
-          events={events} // Events will now include color property
-          dayCellClassNames={(info) => {
-            const date = new Date(info.date);
-            if (isSunday(date)) return 'sunday-cell';
-            return '';
-          }}
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-          eventClick={(info) => {
-            const event = events.find((e) => e.id === parseInt(info.event.id));
-            
-            // Retrieve related data
-            const linkedCourse = courses.find((course) => course.id === event.extendedProps.courseId);
-            const linkedTeacher = teachers.find((teacher) => teacher.id === event.extendedProps.teacherId);
-            const linkedClassroom = classrooms.find((classroom) => classroom.id === event.extendedProps.classroomId);
-            const linkedClass = classes.find((classItem) => classItem.id === event.extendedProps.classId);
+      <FullCalendar
+        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek"
+        locale="fr"
+        firstDay={1}
+        allDaySlot={false}
+        editable={true}
+        selectable={true}
+        slotMinTime={slots[0].start}
+        slotMaxTime={slots[slots.length - 1].end}
+        select={(info) => {
+          const date = new Date(info.start);
+          if (isSunday(date)) {
+            alert('Vous ne pouvez pas ajouter de cours le dimanche !');
+            return;
+          }
+          if (isHoliday(date)) {
+            alert('Vous ne pouvez pas ajouter de cours pendant les jours fériés !');
+            return;
+          }
 
-            // Update the form state
-            setEventForm({
-              id: event.id,
-              title: linkedCourse?.name || '',
-              description: linkedCourse?.description || '',
-              date: event.start.split('T')[0],
-              start: event.start.slice(11, 16),
-              end: event.end.slice(11, 16),
-              courseId: linkedCourse?.id || null,
-              teacherId: linkedTeacher?.id || null,
-              classroomId: linkedClassroom?.id || null,
-              classId: linkedClass?.id || null,
-              color: event.color || '#007bff',
-            });
+          const selectedStart = info.startStr.slice(11, 16);
+          const selectedEnd = info.endStr.slice(11, 16);
 
-            setShowEventModal(true);
-          }}
-          eventDrop={handleEventDrop}
-        />
-
+          setEventForm({
+            id: null,
+            title: '',
+            description: '',
+            date: info.startStr.split('T')[0],
+            start: selectedStart,
+            end: selectedEnd,
+            courseId: null,
+            teacherId: null,
+            classroomId: null,
+            classId: null,
+            color: '#007bff',
+          });
+          setShowEventModal(true);
+        }}
+        events={events}
+        headerToolbar={{
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay',
+        }}
+        eventClick={(info) => {
+          const event = events.find((e) => e.id === parseInt(info.event.id));
+          const linkedCourse = courses.find((course) => course.id === event.extendedProps.courseId);
+          const linkedTeacher = teachers.find((teacher) => teacher.id === event.extendedProps.teacherId);
+          const linkedClassroom = classrooms.find((classroom) => classroom.id === event.extendedProps.classroomId);
+          const linkedClass = classes.find((classItem) => classItem.id === event.extendedProps.classId);
+          setEventForm({
+            id: event.id,
+            title: linkedCourse?.name || '',
+            description: linkedCourse?.description || '',
+            date: event.start.split('T')[0],
+            start: event.start.slice(11, 16),
+            end: event.end.slice(11, 16),
+            courseId: linkedCourse?.id || null,
+            teacherId: linkedTeacher?.id || null,
+            classroomId: linkedClassroom?.id || null,
+            classId: linkedClass?.id || null,
+            color: event.color || '#007bff',
+          });
+          setShowEventModal(true);
+        }}
+        eventDrop={handleEventDrop}
+      />
 
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
         <Modal.Header closeButton>
@@ -387,7 +412,7 @@ const fetchTeachers = async () => {
         </Modal.Header>
         <Modal.Body>
           <Form>
-          <Form.Group controlId="eventTitle" className="mb-3">
+            <Form.Group controlId="eventTitle" className="mb-3">
               <Form.Label>Nom du Cours</Form.Label>
               <Form.Select
                 name="courseId"
@@ -398,7 +423,7 @@ const fetchTeachers = async () => {
                     ...eventForm,
                     courseId: selectedCourse?.id,
                     title: selectedCourse?.name,
-                    description: selectedCourse?.description || '', // Autofill description
+                    description: selectedCourse?.description || '',
                   });
                 }}
               >
@@ -442,7 +467,6 @@ const fetchTeachers = async () => {
                 ))}
               </Form.Select>
             </Form.Group>
-
             <Form.Group controlId="classroomSelect" className="mb-3">
               <Form.Label>Sélectionner une salle</Form.Label>
               <Form.Select
@@ -458,7 +482,6 @@ const fetchTeachers = async () => {
                 ))}
               </Form.Select>
             </Form.Group>
-
             <Form.Group controlId="eventDescription" className="mb-3">
               <Form.Label>Description du Cours</Form.Label>
               <Form.Control
@@ -469,7 +492,25 @@ const fetchTeachers = async () => {
                 onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
               />
             </Form.Group>
+            <Form.Group controlId="slotSelect" className="mb-3">
+              <Form.Label>Sélectionnez un créneau horaire</Form.Label>
+              <Form.Select
+                onChange={(e) => {
+                  const [start, end] = e.target.value.split(',');
+                  setEventForm({ ...eventForm, start, end });
+                }}
+              >
+                <option value="">-- Sélectionner un créneau --</option>
+                {slots.map((slot, index) => (
+                  <option key={index} value={`${slot.start},${slot.end}`}>
+                    {slot.start} - {slot.end}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+
             <Form.Group controlId="eventColor" className="mb-3">
+              
               <Form.Label>Couleur de l'Événement</Form.Label>
               <Form.Control
                 type="color"
@@ -478,8 +519,6 @@ const fetchTeachers = async () => {
                 onChange={(e) => setEventForm({ ...eventForm, color: e.target.value })}
               />
             </Form.Group>
-
-
           </Form>
         </Modal.Body>
         <Modal.Footer>
