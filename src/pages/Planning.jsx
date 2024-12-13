@@ -431,6 +431,8 @@ const fetchTeachers = async () => {
                     ...eventForm,
                     courseId: selectedCourse?.id,
                     title: selectedCourse?.name,
+                    description: selectedCourse?.description || '', // Update the description
+
                   });
                 }}
               >
