@@ -83,7 +83,11 @@ function HomePage() {
         <div className="hero-content">
           <h1>Bienvenue sur notre Plateforme</h1>
           <p>Votre tableau de bord pour gérer les cours, les utilisateurs et plus encore.</p>
-          <button className="cta-button">Explorer les filieres</button>
+          <button 
+            className="cta-button" 
+            onClick={() => window.location.href = '/fields'}>
+            Explorer les filieres
+          </button>
         </div>
       </section>
 

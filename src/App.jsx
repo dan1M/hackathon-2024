@@ -5,27 +5,10 @@ import Dashboard from './pages/dashboard';
 import HomePage from './pages/HomePage';
 import FilierePage from './pages/filiere';
 import ListeTeachers from './pages/listeTeachers';
-<<<<<<< HEAD
 import './assets/styles/Auth.css';
 import DashboardLayout from './layout/DashboardLayout';
-=======
-import "./styles/Auth.css";
 
-const App = () => {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    getUsers();
-  }, []);
-
-  const getUsers = async () => {
-    const { data, error } = await supabase.from('users_hackathon').select();
-    if (error) 
-      console.error('error', error);
-    else setUsers(data);
-  };
->>>>>>> 7accb35 (Update)
-
+function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -42,12 +25,6 @@ const App = () => {
       </Routes>
     </BrowserRouter>
   );
-<<<<<<< HEAD
-};
-
-export default App;
-=======
 }
 
 export default App;
->>>>>>> 7accb35 (Update)

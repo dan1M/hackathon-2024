@@ -32,7 +32,7 @@ import { Outlet } from 'react-router-dom';
 
 const LinkItems = [
   { name: 'Accueil', icon: FiHome, href: '/homePage' },
-  { name: 'Planning', icon: FiTrendingUp, href: '/dashboard' },
+  { name: 'Planning', icon: FiTrendingUp, href: '/planning' },
 ];
 
 const SidebarContent = ({ onClose, ...rest }) => {
