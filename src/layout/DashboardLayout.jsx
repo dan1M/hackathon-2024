@@ -101,6 +101,7 @@ SidebarContent.propTypes = {
 const NavItem = ({ icon, children, ...rest }) => {
   const navigate = useNavigate();
   const { href } = rest;
+  const isActive = window.location.pathname === href;
   return (
     <Box
       as="a"
@@ -117,6 +118,7 @@ const NavItem = ({ icon, children, ...rest }) => {
         borderRadius="lg"
         role="group"
         cursor="pointer"
+        bg={isActive ? 'gray.200' : 'transparent'}
         _hover={{
           bg: 'gray.400',
           color: 'white',
