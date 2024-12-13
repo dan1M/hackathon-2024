@@ -99,11 +99,14 @@ SidebarContent.propTypes = {
 };
 
 const NavItem = ({ icon, children, ...rest }) => {
+  const navigate = useNavigate();
   const { href } = rest;
   return (
     <Box
       as="a"
-      href={href}
+      onClick={() => {
+        navigate(href);
+      }}
       style={{ textDecoration: 'none' }}
       _focus={{ boxShadow: 'none' }}
     >
