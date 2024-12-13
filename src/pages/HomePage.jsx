@@ -145,8 +145,8 @@ function HomePage() {
       <section className="cta-section">
         <h2>Prêt à commencer ?</h2>
         <div className="cta-buttons">
-          <button href="/login" className="cta-button">Accéder à mon compte</button>
-          <button href="/fields" className="cta-button">Découvrir les filieres</button>
+          <button onClick={() => window.location.href = '/login'} className="cta-button">Accéder à mon compte</button>
+          <button onClick={() => window.location.href = '/fields'} className="cta-button">Découvrir les filieres</button>
         </div>
       </section>
     </div>
