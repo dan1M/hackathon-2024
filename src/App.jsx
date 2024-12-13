@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import ReactDOM from 'react-dom';
-import { Routes, Route } from 'react-router-dom';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Login from './pages/login';
 import Header from './components/header';
 import Footer from './components/footer';
+import Planning from './pages/Planning'; 
 import Dashboard from './pages/dashboard';
 import Navbar from './components/navbar';
 import HomePage from './pages/HomePage';
@@ -28,6 +27,7 @@ const App = () => {
     else setUsers(data);
   };
 
+const App = () => {
   return (
     <BrowserRouter>
       <Header />
@@ -37,6 +37,7 @@ const App = () => {
         <Route path="/homePage" element={<HomePage />} />
         <Route path="/fields" element={<FilierePage />} />
         <Route path="/teachers_list" element={<ListeTeachers />} />
+        <Route path="/planning" element={<Planning />} />
         {/* Ajoute d'autres routes si nécessaire */}
       </Routes>
       <Footer />
@@ -45,4 +46,3 @@ const App = () => {
 }
 export default App;
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
