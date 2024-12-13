@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import LoginForm from '../components/LoginForm';
 import { useUser } from '../context/user-context';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
 
 const Login = () => {

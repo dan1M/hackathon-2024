@@ -1,12 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/login';
-import Planning from './pages/Planning';
 import Dashboard from './pages/dashboard';
-import HomePage from './pages/HomePage';
-import FilierePage from './pages/filiere';
-import ListeTeachers from './pages/listeTeachers';
 import './assets/styles/Auth.css';
 import DashboardLayout from './layout/DashboardLayout';
+import PlanningsPage from './pages/plannings';
+import AdvancedManagement from './pages/advanced-management';
+import TeacherPlanning from './pages/teacher-planning';
+import TeacherAvailabilities from './pages/teacher-availabilities';
+import StudentPlanning from './pages/student-planning';
 
 function App() {
   return (
@@ -16,11 +17,14 @@ function App() {
 
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<Dashboard />} />
-          {/* <Route path="/homePage" element={<HomePage />} /> */}
-          {/* <Route path="/fields" element={<FilierePage />} /> */}
-          {/* <Route path="/teachers_list" element={<ListeTeachers />} /> */}
-          {/* <Route path="/planning" element={<Planning />} /> */}
-          {/* Ajoute d'autres routes si nécessaire */}
+          <Route path="/plannings" element={<PlanningsPage />} />
+          <Route path="/advanced-management" element={<AdvancedManagement />} />
+          <Route path="/teacher-planning" element={<TeacherPlanning />} />
+          <Route
+            path="/teacher-availabilities"
+            element={<TeacherAvailabilities />}
+          />
+          <Route path="/student-planning" element={<StudentPlanning />} />
         </Route>
       </Routes>
     </BrowserRouter>

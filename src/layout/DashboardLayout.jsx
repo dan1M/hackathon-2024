@@ -39,7 +39,7 @@ const getLinkItems = (role) => {
   switch (role) {
     case 'admin':
       return [
-        { name: 'Accueil', icon: FiHome, href: '/dashboard' },
+        { name: 'Accueil', icon: FiHome, href: '/' },
         { name: 'Gérer les plannings', icon: FiCalendar, href: '/plannings' },
         {
           name: 'Gestion avancée',
