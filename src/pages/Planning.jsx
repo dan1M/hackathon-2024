@@ -37,7 +37,7 @@ const Planning = () => {
     try {
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('*, courses(name)'); // Use Supabase relationship to fetch course name
+        .select('*, courses(name), users_hackathon(name), classroom(name), classes(name)'); // Use Supabase relationship to fetch course name
 
       if (error) throw error;
 
@@ -108,11 +108,52 @@ const fetchTeachers = async () => {
     }
   };
 
+  const fetchClassrooms = async () => {
+    try {
+      const { data: fetchedClassrooms, error } = await supabase
+        .from('classroom')
+        .select('id, name');
+      if (error) throw error;
+      setClassrooms(fetchedClassrooms);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des salles:', error);
+    }
+  };
+  
+  const fetchClasses = async () => {
+    try {
+      const { data: fetchedClasses, error } = await supabase
+        .from('classes')
+        .select('id, name'); 
+      if (error) throw error;
+      setClasses(fetchedClasses);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des classes:', error);
+    }
+  };
+  const fetchHolidays = async () => {
+    const frenchHolidays = [
+      { title: 'Nouvel An', date: '2024-01-01' },
+      { title: 'Fête du Travail', date: '2024-05-01' },
+      { title: 'Fête Nationale', date: '2024-07-14' },
+      { title: 'Assomption', date: '2024-08-15' },
+      { title: 'Toussaint', date: '2024-11-01' },
+      { title: 'Noël', date: '2024-12-25' },
+    ];
+
+    const holidayDates = frenchHolidays.map((holiday) => holiday.date);
+    setHolidays(holidayDates);
+  };
   // Fetch data on component mount
   useEffect(() => {
     fetchLessons();
     fetchCourses();
     fetchSlots();
+    fetchTeachers();
+    fetchClassrooms();
+    fetchClasses();
+    fetchHolidays();
+
   }, []);
 
   const isSunday = (date) => date.getDay() === 0; // Sunday = 0
@@ -196,6 +237,11 @@ const fetchTeachers = async () => {
             start_time: start,
             end_time: end,
             course_id: courseId,
+            teacher_id: teacherId,
+            classroom_id: classroomId,
+            class_id: classId,
+            unexpected: description, // Update the 'unexpected' field
+            color: eventForm.color || '#007bff', // Update color if necessary
           })
           .eq('id', id);
   
@@ -234,6 +280,11 @@ const fetchTeachers = async () => {
             start_time: start,
             end_time: end,
             course_id: courseId,
+            teacher_id: teacherId,
+            classroom_id: classroomId,
+            class_id: classId,
+            unexpected: description, // Update the 'unexpected' field
+            color: eventForm.color || '#007bff', // Update color if necessary
           })
           .select();
   
@@ -325,6 +376,9 @@ const fetchTeachers = async () => {
             start: matchingSlot.start,
             end: matchingSlot.end,
             courseId: null,
+            teacherId: null,
+            classroomId: null,
+            classId: null,
           });
           setShowEventModal(true);
         }}
@@ -384,6 +438,51 @@ const fetchTeachers = async () => {
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="classSelect" className="mb-3">
+              <Form.Label>Sélectionner une classe</Form.Label>
+              <Form.Select
+                name="classId"
+                value={eventForm.classId || ''}
+                onChange={(e) => setEventForm({ ...eventForm, classId: parseInt(e.target.value) })}
+              >
+                <option value="">-- Aucune classe assignée --</option>
+                {classes.map((classItem) => (
+                  <option key={classItem.id} value={classItem.id}>
+                    {classItem.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="teacherSelect" className="mb-3">
+              <Form.Label>Sélectionner un professeur</Form.Label>
+              <Form.Select
+                name="teacherId"
+                value={eventForm.teacherId || ''}
+                onChange={(e) => setEventForm({ ...eventForm, teacherId: parseInt(e.target.value) })}
+              >
+                <option value="">-- Aucun professeur assigné --</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="classroomSelect" className="mb-3">
+              <Form.Label>Sélectionner une salle</Form.Label>
+              <Form.Select
+                name="classroomId"
+                value={eventForm.classroomId || ''}
+                onChange={(e) => setEventForm({ ...eventForm, classroomId: parseInt(e.target.value) })}
+              >
+                <option value="">-- Aucune salle assignée --</option>
+                {classrooms.map((classroom) => (
+                  <option key={classroom.id} value={classroom.id}>
+                    {classroom.name}
                   </option>
                 ))}
               </Form.Select>
