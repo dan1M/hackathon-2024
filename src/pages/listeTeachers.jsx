@@ -1,247 +1,222 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-// import '../assets/styles/ListeTeachers.css'; // Importez un fichier CSS pour styliser si nécessaire
+import '../assets/styles/listeTeachers.css';
 
 function ListeTeachers() {
-  const [courses, setCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [professors, setProfessors] = useState([]);
-  const [userRole, setUserRole] = useState(null);
-  const [showAddProfessorForm, setShowAddProfessorForm] = useState(false);
-  const [showAssignSubjectsForm, setShowAssignSubjectsForm] = useState(false);
-  const [showGlobalManagementForm, setShowGlobalManagementForm] = useState(false);
-  
-  const [newProfessor, setNewProfessor] = useState({ name: '', email: '' });
-  const [subjectAssignment, setSubjectAssignment] = useState({ subject: '', professorId: '' });
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    dateOfBirth: '',
+    classId: '',
+    subjectId: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchCourses();
-    fetchUserRole();
+    fetchClasses();
+    fetchSubjects();
+    fetchAssignments();
   }, []);
 
-  // Récupérer la liste des cours
-  const fetchCourses = async () => {
-    const { data, error } = await supabase.from('courses').select();
+  // Récupérer les classes depuis Supabase
+  const fetchClasses = async () => {
+    const { data, error } = await supabase.from('classes').select('id, name');
     if (error) {
-      console.error('Error fetching courses:', error);
+      console.error('Error fetching classes:', error);
     } else {
-      setCourses(data);
+      setClasses(data);
     }
   };
 
-  // Récupérer le rôle de l'utilisateur
-  const fetchUserRole = async () => {
-    const { data, error } = await supabase.auth.getUser();
+  // Récupérer les matières depuis Supabase
+  const fetchSubjects = async () => {
+    const { data, error } = await supabase.from('courses').select('id, name');
     if (error) {
-      console.error('Error fetching user:', error);
+      console.error('Error fetching subjects:', error);
     } else {
-      setUserRole(data?.role);
+      setSubjects(data);
     }
   };
 
-  // Récupérer les professeurs assignés à un cours
-  const fetchProfessors = async (courseId) => {
+  // Récupérer les affectations depuis Supabase
+  const fetchAssignments = async () => {
     const { data, error } = await supabase
-      .from('users_hackathon')
-      .select('id, name, email')
-      .eq('role', 'teacher')
-      .eq('class_id', courseId);
+      .from('lessons')
+      .select(`
+        id,
+        teacher:users_hackathon(name, email),
+        class:classes(name),
+        course:courses(name)
+      `);
 
     if (error) {
-      console.error('Error fetching professors:', error);
+      console.error('Error fetching assignments:', error);
     } else {
-      setProfessors(data);
+      setAssignments(data);
     }
   };
 
-  // Gérer la sélection du cours
-  const handleCourseChange = (e) => {
-    const courseId = e.target.value;
-    setSelectedCourse(courseId);
-    fetchProfessors(courseId); // Récupérer les professeurs pour ce cours
-  };
-
-  // Supprimer un professeur
-  const handleDelete = async (id) => {
-    const { error } = await supabase
-      .from('users_hackathon')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting professor:', error);
-    } else {
-      setProfessors(professors.filter((professor) => professor.id !== id));
-    }
-  };
-
-  // Soumettre le formulaire d'ajout de professeur
-  const handleAddProfessor = async (e) => {
+  // Gérer la soumission du formulaire
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const { name, email } = newProfessor;
+    setIsSubmitting(true);
 
-    const { error } = await supabase
-      .from('users_hackathon')
-      .insert([{ name, email, role: 'teacher', class_id: selectedCourse }]);
+    const { name, email, dateOfBirth, classId, subjectId } = formData;
 
-    if (error) {
-      console.error('Error adding professor:', error);
-    } else {
-      setProfessors([...professors, { name, email }]);
-      setShowAddProfessorForm(false);
-      setNewProfessor({ name: '', email: '' });
+    try {
+      // Ajouter le professeur
+      const { data: professor, error: professorError } = await supabase
+        .from('users_hackathon')
+        .insert([
+          {
+            name,
+            email,
+            birthdate: dateOfBirth,
+            role: 'teacher',
+            password: 'password',
+            class_id: classId
+          }
+        ])
+        .select();
+
+      if (professorError) {
+        throw professorError;
+      }
+
+      // Créer une leçon pour assigner la matière au professeur
+      const { error: lessonError } = await supabase
+        .from('lessons')
+        .insert([
+          {
+            teacher_id: professor[0].id,
+            course_id: subjectId,
+            date: new Date().toISOString().split('T')[0], // Date actuelle
+            start_time: '08:00:00',
+            end_time: '09:00:00'
+          }
+        ]);
+
+      if (lessonError) {
+        throw lessonError;
+      }
+
+      alert('Professeur ajouté et leçon créée avec succès !');
+      setFormData({ name: '', email: '', dateOfBirth: '', classId: '', subjectId: '' });
+      fetchAssignments(); // Mettre à jour les affectations
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Une erreur est survenue lors de la soumission.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Soumettre le formulaire d'assignation de matières
-  const handleAssignSubjects = async (e) => {
-    e.preventDefault();
-    const { subject, professorId } = subjectAssignment;
-
-    const { error } = await supabase
-      .from('course_assignments')
-      .insert([{ subject, professor_id: professorId }]);
-
-    if (error) {
-      console.error('Error assigning subject:', error);
-    } else {
-      setShowAssignSubjectsForm(false);
-      setSubjectAssignment({ subject: '', professorId: '' });
-    }
+  // Gérer les changements dans le formulaire
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   return (
-    <div className="teachers-container">
-      <header className="teachers-header">
-        <h1>Gestion des Professeurs</h1>
-        <p>Gérez les professeurs pour chaque cours.</p>
-      </header>
-
-      <section className="course-selection">
-        <h2>Sélectionner un Cours</h2>
-        <select onChange={handleCourseChange} value={selectedCourse || ''}>
-          <option value="">Sélectionner un cours</option>
-          {courses.map((course) => (
-            <option key={course.id} value={course.id}>
-              {course.name}
-            </option>
+    <div className="add-professor-form">
+      <h1>Liste des Professeurs Assignés</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Professeur</th>
+            <th>Email</th>
+            <th>Classe</th>
+            <th>Matière</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assignments.map((assignment) => (
+            <tr key={assignment.id}>
+              <td>{assignment.teacher?.name}</td>
+              <td>{assignment.teacher?.email}</td>
+              <td>{assignment.class?.name}</td>
+              <td>{assignment.course?.name}</td>
+            </tr>
           ))}
-        </select>
-      </section>
+        </tbody>
+      </table>
 
-      {selectedCourse && (
-        <section className="professors-list">
-          <h2>Professeurs du Cours {selectedCourse}</h2>
+      <h1>Ajouter un Professeur</h1>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Nom:
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+        </label>
 
-          <table className="professors-table">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Email</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {professors.length > 0 ? (
-                professors.map((professor) => (
-                  <tr key={professor.id}>
-                    <td>{professor.name}</td>
-                    <td>{professor.email}</td>
-                    <td>
-                      <button onClick={() => handleDelete(professor.id)}>
-                        Supprimer
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="3">Aucun professeur trouvé pour ce cours.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </section>
-      )}
+        <label>
+          Email:
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </label>
 
-      <section className="admin-actions">
-        <h2>Actions Admin</h2>
-        <button onClick={() => setShowAddProfessorForm(!showAddProfessorForm)}>
-          Ajouter un professeur
+        <label>
+          Date de Naissance:
+          <input
+            type="date"
+            name="dateOfBirth"
+            value={formData.dateOfBirth}
+            onChange={handleChange}
+            required
+          />
+        </label>
+
+        <label>
+          Classe:
+          <select
+            name="classId"
+            value={formData.classId}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Sélectionner une classe</option>
+            {classes.map((classItem) => (
+              <option key={classItem.id} value={classItem.id}>
+                {classItem.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Matière:
+          <select
+            name="subjectId"
+            value={formData.subjectId}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Sélectionner une matière</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'En cours...' : 'Ajouter'}
         </button>
-        <button onClick={() => setShowAssignSubjectsForm(!showAssignSubjectsForm)}>
-          Assigner des matières
-        </button>
-        <button onClick={() => setShowGlobalManagementForm(!showGlobalManagementForm)}>
-          Gestion globale
-        </button>
-      </section>
-
-      {/* Formulaire Ajouter un professeur */}
-      {showAddProfessorForm && (
-        <form onSubmit={handleAddProfessor}>
-          <h3>Ajouter un Professeur</h3>
-          <label>
-            Nom:
-            <input
-              type="text"
-              value={newProfessor.name}
-              onChange={(e) => setNewProfessor({ ...newProfessor, name: e.target.value })}
-              required
-            />
-          </label>
-          <label>
-            Email:
-            <input
-              type="email"
-              value={newProfessor.email}
-              onChange={(e) => setNewProfessor({ ...newProfessor, email: e.target.value })}
-              required
-            />
-          </label>
-          <button type="submit">Ajouter</button>
-        </form>
-      )}
-
-      {/* Formulaire Assigner des matières */}
-      {showAssignSubjectsForm && (
-        <form onSubmit={handleAssignSubjects}>
-          <h3>Assigner une Matière</h3>
-          <label>
-            Matière:
-            <input
-              type="text"
-              value={subjectAssignment.subject}
-              onChange={(e) => setSubjectAssignment({ ...subjectAssignment, subject: e.target.value })}
-              required
-            />
-          </label>
-          <label>
-            Professeur:
-            <select
-              value={subjectAssignment.professorId}
-              onChange={(e) => setSubjectAssignment({ ...subjectAssignment, professorId: e.target.value })}
-              required
-            >
-              <option value="">Sélectionner un professeur</option>
-              {professors.map((professor) => (
-                <option key={professor.id} value={professor.id}>
-                  {professor.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit">Assigner</button>
-        </form>
-      )}
-
-      {/* Formulaire Gestion globale */}
-      {showGlobalManagementForm && (
-        <form>
-          <h3>Gestion Globale</h3>
-          <p>Options de gestion pour les administrateurs.</p>
-        </form>
-      )}
+      </form>
     </div>
   );
 }

@@ -212,7 +212,6 @@ function Dashboard() {
             <div className="admin-actions">
               <button>Gestion des classes</button>
               <button>Assignation des matières</button>
-              <button>IA - Gestion globale</button>
             </div>
 
             {/* Tableau des utilisateurs */}
