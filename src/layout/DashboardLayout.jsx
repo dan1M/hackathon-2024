@@ -19,23 +19,55 @@ import {
   MenuDivider,
   MenuItem,
   MenuList,
+  Badge,
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import {
   FiHome,
-  FiTrendingUp,
   FiMenu,
   FiBell,
   FiChevronDown,
+  FiCalendar,
+  FiSettings,
 } from 'react-icons/fi';
-import { Outlet } from 'react-router-dom';
+import { FaBusinessTime } from 'react-icons/fa';
+import { Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { useUser } from '../context/user-context';
 
-const LinkItems = [
-  { name: 'Accueil', icon: FiHome, href: '/homePage' },
-  { name: 'Planning', icon: FiTrendingUp, href: '/planning' },
-];
+const getLinkItems = (role) => {
+  // admin | teacher | student
+  switch (role) {
+    case 'admin':
+      return [
+        { name: 'Accueil', icon: FiHome, href: '/dashboard' },
+        { name: 'Gérer les plannings', icon: FiCalendar, href: '/plannings' },
+        {
+          name: 'Gestion avancée',
+          icon: FiSettings,
+          href: '/advanced-management',
+        },
+      ];
+    case 'teacher':
+      return [
+        { name: 'Mon Planning', icon: FiCalendar, href: '/teacher-planning' },
+        {
+          name: 'Mes disponibilités',
+          icon: FaBusinessTime,
+          href: '/teacher-availabilities',
+        },
+      ];
+    case 'student':
+      return [
+        { name: 'Mon Planning', icon: FiCalendar, href: '/student-planning' },
+      ];
+    default:
+      return [];
+  }
+};
 
 const SidebarContent = ({ onClose, ...rest }) => {
+  const { user } = useUser();
+  const LinkItems = getLinkItems(user?.role);
   return (
     <Box
       transition="3s ease"
@@ -48,8 +80,8 @@ const SidebarContent = ({ onClose, ...rest }) => {
       {...rest}
     >
       <Flex h="20" alignItems="center" mx="8" justifyContent="space-between">
-        <Text fontSize="2xl" fontFamily="monospace" fontWeight="bold">
-          Planning
+        <Text fontSize="2xl" fontFamily="monospace" my={4} fontWeight="bold">
+          School Planning
         </Text>
         <CloseButton display={{ base: 'flex', md: 'none' }} onClick={onClose} />
       </Flex>
@@ -109,15 +141,18 @@ NavItem.propTypes = {
 };
 
 const MobileNav = ({ onOpen, ...rest }) => {
+  const navigate = useNavigate();
+  const { logout, user } = useUser();
+
   return (
     <Flex
       ml={{ base: 0, md: 60 }}
       px={{ base: 4, md: 4 }}
       height="20"
       alignItems="center"
-      bg={useColorModeValue('white', 'gray.900')}
+      bg={'white'}
       borderBottomWidth="1px"
-      borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
+      borderBottomColor={'gray.200'}
       justifyContent={{ base: 'space-between', md: 'flex-end' }}
       {...rest}
     >
@@ -135,7 +170,7 @@ const MobileNav = ({ onOpen, ...rest }) => {
         fontFamily="monospace"
         fontWeight="bold"
       >
-        Planning
+        School Planning
       </Text>
 
       <HStack spacing={{ base: '0', md: '6' }}>
@@ -166,24 +201,32 @@ const MobileNav = ({ onOpen, ...rest }) => {
                   ml="2"
                 >
                   <Text fontSize="sm" m={0} fontWeight={'semibold'}>
-                    Justina Clark
+                    {user?.name}
                   </Text>
-                  <Text fontSize="xs" color="gray.600" m={0}>
-                    Admin
-                  </Text>
+                  <Badge
+                    fontSize="xs"
+                    colorScheme={user?.role === 'admin' ? 'red' : 'green'}
+                    m={0}
+                  >
+                    {user?.role}
+                  </Badge>
                 </VStack>
                 <Box display={{ base: 'none', md: 'flex' }}>
                   <FiChevronDown />
                 </Box>
               </HStack>
             </MenuButton>
-            <MenuList
-              bg={useColorModeValue('white', 'gray.900')}
-              borderColor={useColorModeValue('gray.200', 'gray.700')}
-            >
+            <MenuList bg={'white'} borderColor={'gray.200'}>
               <MenuItem>Profil</MenuItem>
               <MenuDivider />
-              <MenuItem>Se déconnecter</MenuItem>
+              <MenuItem
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+              >
+                Se déconnecter
+              </MenuItem>
             </MenuList>
           </Menu>
         </Flex>
@@ -197,10 +240,16 @@ MobileNav.propTypes = {
 };
 
 const DashboardLayout = () => {
+  const { user } = useUser();
+
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
   return (
-    <Box minH="100vh" bg={useColorModeValue('gray.100', 'gray.900')}>
+    <Box minH="100vh" bg={'gray.100'}>
       <SidebarContent
         onClose={() => onClose}
         display={{ base: 'none', md: 'block' }}
