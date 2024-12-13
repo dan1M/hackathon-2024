@@ -1,8 +1,17 @@
-import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
+import { Routes, Route } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import Login from './pages/login';
+import Header from './components/header';
+import Footer from './components/footer';
+import Dashboard from './pages/dashboard';
+import Navbar from './components/navbar';
+import HomePage from './pages/HomePage';
+import FilierePage from './pages/filiere';
+import ListeTeachers from './pages/listeTeachers';
 import { supabase } from "../supabaseClient";
-import Login from "./pages/login";
-import Home from "./pages/home";
 import "./styles/Auth.css";
 
 const App = () => {
@@ -13,19 +22,27 @@ const App = () => {
   }, []);
 
   const getUsers = async () => {
-    const { data, error } = await supabase.from("users_hackathon").select();
-    if (error) console.error("Erreur :", error);
+    const { data, error } = await supabase.from('users_hackathon').select();
+    if (error) 
+      console.error('error', error);
     else setUsers(data);
   };
 
   return (
-    <Router>
+    <BrowserRouter>
+      <Header />
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/home" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/homePage" element={<HomePage />} />
+        <Route path="/fields" element={<FilierePage />} />
+        <Route path="/teachers_list" element={<ListeTeachers />} />
+        {/* Ajoute d'autres routes si nécessaire */}
       </Routes>
-    </Router>
+      <Footer />
+    </BrowserRouter>
   );
-};
-
+}
 export default App;
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);

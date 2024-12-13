@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
   )
 })
 
+
 /* To invoke locally:
 
   1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
