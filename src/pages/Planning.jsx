@@ -26,7 +26,6 @@ const Planning = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [classrooms, setClassrooms] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [teacherAvailabilities, setTeacherAvailabilities] = useState([]);
 
   // Fetch lessons, courses, and slots from Supabase
   const fetchLessons = async () => {
@@ -125,19 +124,6 @@ const fetchTeachers = async () => {
       setClasses(fetchedClasses);
     } catch (error) {
       console.error('Erreur lors de la récupération des classes:', error);
-    }
-  };
-  
-  const fetchTeacherAvailabilities = async () => {
-    try {
-      const { data: availabilities, error } = await supabase
-        .from('teacher_availabilities')
-        .select('*')
-        .eq('status', 'active'); // Récupérer uniquement les indisponibilités actives
-      if (error) throw error;
-      setTeacherAvailabilities(availabilities);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des indisponibilités:', error);
     }
   };
   
