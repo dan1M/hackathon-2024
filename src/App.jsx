@@ -1,14 +1,31 @@
-import { Box, Button } from '@chakra-ui/react';
-import { generatePlanning } from './utils/generate-planning';
+import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
+import Login from "./pages/login";
+import Home from "./pages/home";
+import "./styles/Auth.css";
 
-function App() {
+const App = () => {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    getUsers();
+  }, []);
+
+  const getUsers = async () => {
+    const { data, error } = await supabase.from("users_hackathon").select();
+    if (error) console.error("Erreur :", error);
+    else setUsers(data);
+  };
+
   return (
-    <Box>
-      <Button onClick={() => generatePlanning({ class_id: 1, week: 3 })}>
-        Test GENERATE PLANNING
-      </Button>
-    </Box>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/home" element={<Home />} />
+      </Routes>
+    </Router>
   );
-}
+};
 
 export default App;
