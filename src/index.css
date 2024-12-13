@@ -5,9 +5,9 @@
 }
 
 .fc-event {
-  background-color: #007bff !important; /* Couleur par défaut pour les événements */
+  background-color: #007bff ; /* Couleur par défaut pour les événements */
   color: white !important;
-  border: 1px solid #0056b3 !important;
+  border: 1px solid #0056b3 ;
 }
 
 .fc-event:hover {
