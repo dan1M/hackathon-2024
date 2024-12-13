@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState } from "react";
+import LoginForm from "../components/LoginForm";
 
 const Login = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
+
   return (
-    <div>
-      <h1 className=''>Page Login</h1>
+    <div className="auth-page">
+      <div className="auth-header">
+        <h1>{isSignUp ? "Inscription" : "Connexion"}</h1>
+      </div>
+      <main className="auth-main">
+        <div className="auth-form-container">
+          <LoginForm isSignUp={isSignUp} toggleForm={() => setIsSignUp(!isSignUp)} />
+        </div>
+      </main>
     </div>
   );
 };

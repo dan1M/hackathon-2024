@@ -1,0 +1,46 @@
+.filieres-container {
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .page-title {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  
+  .filieres-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 colonnes */
+    grid-template-rows: repeat(2, 1fr); /* 2 lignes */
+    gap: 20px;
+  }
+  
+  .filiere-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    padding: 2rem;
+  }
+  
+  .filiere-image {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-bottom: 2px solid #ddd;
+  }
+  
+  .filiere-content {
+    padding: 20px;
+  }
+  
+  .filiere-name {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .filiere-description {
+    font-size: 1rem;
+    color: #555;
+  }
+  

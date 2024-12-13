@@ -1,27 +1,48 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'; // For routing
-import Login from './pages/login'; // Your login page
-import Planning from './pages/Planning'; // The new planning page
-import Header from './components/header'; // Your header component
-import Footer from './components/footer'; // Your footer component
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import Login from './pages/login';
+import Header from './components/header';
+import Footer from './components/footer';
+import Planning from './pages/Planning'; 
+import Dashboard from './pages/dashboard';
+import Navbar from './components/navbar';
+import HomePage from './pages/HomePage';
+import FilierePage from './pages/filiere';
+import ListeTeachers from './pages/listeTeachers';
+import { supabase } from "../supabaseClient";
+import "./styles/Auth.css";
+
+const App = () => {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    getUsers();
+  }, []);
+
+  const getUsers = async () => {
+    const { data, error } = await supabase.from('users_hackathon').select();
+    if (error) 
+      console.error('error', error);
+    else setUsers(data);
+  };
 
 const App = () => {
   return (
-    <Router>
-      <div>
-        <Header />
-
-        <div style={{ padding: '20px' }}>
-          <Routes>
-            <Route path="/" element={<Login />} /> 
-            <Route path="/planning" element={<Planning />} /> 
-          </Routes>
-        </div>
-
-        <Footer />
-      </div>
-    </Router>
+    <BrowserRouter>
+      <Header />
+      <Routes>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/homePage" element={<HomePage />} />
+        <Route path="/fields" element={<FilierePage />} />
+        <Route path="/teachers_list" element={<ListeTeachers />} />
+        <Route path="/planning" element={<Planning />} />
+        {/* Ajoute d'autres routes si nécessaire */}
+      </Routes>
+      <Footer />
+    </BrowserRouter>
   );
-};
-
+}
 export default App;
+
