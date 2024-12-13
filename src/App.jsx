@@ -11,9 +11,10 @@ import Navbar from './components/navbar';
 import HomePage from './pages/HomePage';
 import FilierePage from './pages/filiere';
 import ListeTeachers from './pages/listeTeachers';
+import { supabase } from "../supabaseClient";
+import "./styles/Auth.css";
 
-// L'import de BrowserRouter devrait être utilisé ici pour envelopper l'ensemble de l'application.
-function App() {
+const App = () => {
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
