@@ -28,7 +28,7 @@ const PlanningsPage = () => {
     try {
       const { data: fetchedClasses, error } = await supabase
         .from('classes')
-        .select('id, name, available_weeks');
+        .select('*');
       if (error) throw error;
       setClasses(fetchedClasses);
     } catch (error) {
@@ -125,6 +125,7 @@ const PlanningsPage = () => {
             <YearWeeksGrid
               selectedWeeks={classSchoolWeeks}
               setSelectedWeeks={setClassSchoolWeeks}
+              initialSchoolYear={2024}
             />
           </>
         ) : (
@@ -155,7 +156,9 @@ const PlanningsPage = () => {
           )}
         </Box>
         <CustomCalendar
-          availableViews={'dayGridMonth,timeGridWeek'}
+          initialSchoolYear={2024}
+          initialView={'multiMonthYear'}
+          availableViews={'multiMonthYear,dayGridMonth,timeGridWeek'}
           setCurrentWeek={setCurrentWeek}
           isDisabled={!selectedClass}
           disabledText={

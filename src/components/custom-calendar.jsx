@@ -2,20 +2,20 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid'; // Week/Day view
 import dayGridPlugin from '@fullcalendar/daygrid'; // Month view
 import interactionPlugin from '@fullcalendar/interaction'; // For interactions
+import multiMonthPlugin from '@fullcalendar/multimonth'; // For multi-month view
 import { useEffect, useState } from 'react';
-
 import PropTypes from 'prop-types';
 import getDayjs from '../utils/getDayjs';
 import { supabase } from '../utils/supabaseClient';
-import { Box, Center, Heading, Text } from '@chakra-ui/react';
+import { Box, Center, Heading } from '@chakra-ui/react';
 
 const CustomCalendar = ({
   initialView,
   availableViews,
   setCurrentWeek,
-  setSelectedWeeks,
   isDisabled,
   disabledText,
+  initialSchoolYear,
 }) => {
   const d = getDayjs();
 
@@ -54,16 +54,37 @@ const CustomCalendar = ({
   return (
     <Box style={{ position: 'relative' }}>
       <FullCalendar
-        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+        plugins={[
+          timeGridPlugin,
+          dayGridPlugin,
+          interactionPlugin,
+          multiMonthPlugin,
+        ]}
+        initialDate={`${initialSchoolYear}-09-01`}
         initialView={initialView || 'timeGridWeek'}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
           right: availableViews || 'dayGridMonth,timeGridWeek,timeGridDay',
         }}
+        views={{
+          multiMonthYear: {
+            type: 'multiMonthYear',
+            duration: { months: 6 },
+            buttonText: 'Semestre',
+          },
+        }}
+        buttonText={{
+          today: 'Date actuelle',
+          month: 'Mois',
+          week: 'Semaine',
+        }}
+        validRange={{
+          start: `${initialSchoolYear}-09-01`,
+          end: `${initialSchoolYear + 1}-08-31`,
+        }}
         locale="fr"
         firstDay={1}
-        weekNumbers={true}
         allDaySlot={false}
         editable={!isDisabled}
         selectable={!isDisabled}
@@ -95,9 +116,9 @@ CustomCalendar.propTypes = {
   initialView: PropTypes.string,
   availableViews: PropTypes.string,
   setCurrentWeek: PropTypes.func,
-  setSelectedWeeks: PropTypes.func,
   isDisabled: PropTypes.bool,
   disabledText: PropTypes.string,
+  initialSchoolYear: PropTypes.number.isRequired,
 };
 
 export default CustomCalendar;

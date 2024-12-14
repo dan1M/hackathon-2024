@@ -2,9 +2,13 @@ import { Grid, GridItem, Text, Heading, VStack } from '@chakra-ui/react';
 import getDayjs from '../utils/getDayjs';
 import PropTypes from 'prop-types';
 
-const initialSchoolYear = 2024;
+// const initialSchoolYear = 2024;
 
-const YearWeeksGrid = ({ selectedWeeks, setSelectedWeeks }) => {
+const YearWeeksGrid = ({
+  selectedWeeks,
+  setSelectedWeeks,
+  initialSchoolYear,
+}) => {
   const dayjs = getDayjs();
 
   // Générer les semaines de septembre (année actuelle) à septembre (année suivante)
@@ -86,6 +90,7 @@ const YearWeeksGrid = ({ selectedWeeks, setSelectedWeeks }) => {
 YearWeeksGrid.propTypes = {
   selectedWeeks: PropTypes.arrayOf(PropTypes.number.isRequired).isRequired,
   setSelectedWeeks: PropTypes.func.isRequired,
+  initialSchoolYear: PropTypes.number.isRequired,
 };
 
 export default YearWeeksGrid;
