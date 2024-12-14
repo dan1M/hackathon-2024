@@ -15,12 +15,15 @@ import CustomCalendar from '../components/custom-calendar';
 import { supabase } from '../utils/supabaseClient';
 import YearWeeksGrid from '../components/YearWeeksGrid';
 
+const initialSchoolYear = 2024;
+
 const PlanningsPage = () => {
   const t = useToast();
   const d = getDayjs();
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState();
   const [currentWeek, setCurrentWeek] = useState(d().week());
+  const [currentView, setCurrentView] = useState('multiMonthYear');
   const [classCoursesToPlace, setClassCoursesToPlace] = useState([]);
   const [classSchoolWeeks, setClassSchoolWeeks] = useState([]);
 
@@ -35,6 +38,8 @@ const PlanningsPage = () => {
       console.error('Erreur lors de la récupération des classes:', error);
     }
   };
+
+  const firstWeekOfSchool = d(`${initialSchoolYear}-09-01`).week();
 
   const updateClassAvailableWeeks = async () => {
     if (!selectedClass) return;
@@ -55,6 +60,37 @@ const PlanningsPage = () => {
       isClosable: true,
     });
     fetchClasses();
+  };
+
+  const generateClassPlanning = async () => {
+    if (!selectedClass) return;
+    if (!classCoursesToPlace.length) {
+      t({
+        title: 'Aucune matière à placer',
+        description: `Il n'y a aucune matière à placer pour la classe ${
+          classes.find((classe) => classe.id == selectedClass).name
+        }`,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (
+      !classes.find((classe) => classe.id == selectedClass).available_weeks
+        .length
+    ) {
+      t({
+        title: 'Pas de semaine de cours',
+        description: `Il n'y a aucune semaine de cours pour la classe ${
+          classes.find((classe) => classe.id == selectedClass).name
+        }`,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
   };
 
   useEffect(() => {
@@ -125,7 +161,7 @@ const PlanningsPage = () => {
             <YearWeeksGrid
               selectedWeeks={classSchoolWeeks}
               setSelectedWeeks={setClassSchoolWeeks}
-              initialSchoolYear={2024}
+              initialSchoolYear={initialSchoolYear}
             />
           </>
         ) : (
@@ -139,6 +175,7 @@ const PlanningsPage = () => {
 
       <Flex flexDir={'column'} gap={8}>
         <Heading>Affecter les cours</Heading>
+
         <Box
           borderWidth={1}
           p={2}
@@ -155,11 +192,50 @@ const PlanningsPage = () => {
             </Text>
           )}
         </Box>
+        <Flex
+          justify={'space-between'}
+          // hidden={!selectedClass || classCoursesToPlace.length === 0}
+        >
+          <Button bgColor={'blue.100'} onClick={generateClassPlanning}>
+            Placement automatique (
+            {currentView === 'multiMonthYear'
+              ? 'Semestre'
+              : currentView === 'dayGridMonth'
+              ? 'Mois'
+              : 'Semaine'}
+            )
+          </Button>
+        </Flex>
         <CustomCalendar
-          initialSchoolYear={2024}
+          initialSchoolYear={initialSchoolYear}
           initialView={'multiMonthYear'}
           availableViews={'multiMonthYear,dayGridMonth,timeGridWeek'}
           setCurrentWeek={setCurrentWeek}
+          backgroundEvents={
+            classes &&
+            classes
+              .find((classe) => classe.id == selectedClass)
+              ?.available_weeks.map((week) => {
+                const realWeek = (week + firstWeekOfSchool - 1) % 52;
+                const year =
+                  initialSchoolYear +
+                  Math.floor((week + firstWeekOfSchool - 1) / 52);
+                return {
+                  start: d()
+                    .year(year)
+                    .week(realWeek)
+                    .startOf('week')
+                    .format('YYYY-MM-DD'),
+                  end: d()
+                    .year(year)
+                    .week(realWeek)
+                    .endOf('week')
+                    .format('YYYY-MM-DD'),
+                  display: 'background',
+                };
+              })
+          }
+          setCurrentView={setCurrentView}
           isDisabled={!selectedClass}
           disabledText={
             selectedClass

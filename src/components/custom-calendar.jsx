@@ -13,9 +13,11 @@ const CustomCalendar = ({
   initialView,
   availableViews,
   setCurrentWeek,
+  setCurrentView,
   isDisabled,
   disabledText,
   initialSchoolYear,
+  backgroundEvents = [],
 }) => {
   const d = getDayjs();
 
@@ -26,9 +28,15 @@ const CustomCalendar = ({
   ]); // Default school slots
 
   const handleDatesSet = (arg) => {
-    const startDate = d(arg.start);
-    const weekNumber = startDate.week();
-    setCurrentWeek && setCurrentWeek(weekNumber);
+    setCurrentView && setCurrentView(arg.view.type);
+    switch (arg.view.type) {
+      case 'timeGridWeek': {
+        const startDate = d(arg.start);
+        const weekNumber = startDate.week();
+        setCurrentWeek && setCurrentWeek(weekNumber);
+        break;
+      }
+    }
   };
 
   const fetchSlots = async () => {
@@ -93,6 +101,7 @@ const CustomCalendar = ({
         slotMinTime={slots[0].start}
         slotMaxTime={slots[slots.length - 1].end}
         datesSet={handleDatesSet}
+        events={[...backgroundEvents]}
       />
       {isDisabled && disabledText && (
         <Center
@@ -116,9 +125,11 @@ CustomCalendar.propTypes = {
   initialView: PropTypes.string,
   availableViews: PropTypes.string,
   setCurrentWeek: PropTypes.func,
+  setCurrentView: PropTypes.func,
   isDisabled: PropTypes.bool,
   disabledText: PropTypes.string,
   initialSchoolYear: PropTypes.number.isRequired,
+  backgroundEvents: PropTypes.array,
 };
 
 export default CustomCalendar;

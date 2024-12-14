@@ -74,7 +74,7 @@ const YearWeeksGrid = ({
               </Text>
               <Text fontSize="sm" m={0}>
                 {dayjs(week.start).format('DD-MM')} -{' '}
-                {dayjs(week.end).format('DD-MM')}
+                {dayjs(week.end).weekday(4).format('DD-MM')}
               </Text>
               <Text fontSize="sm" color={'gray'} m={0}>
                 {dayjs(week.start).format('YYYY')}
