@@ -1,5 +1,5 @@
 /* Styles globaux */
-body {
+/* body {
     font-family: 'Roboto', Arial, sans-serif;
     line-height: 1.6;
     margin: 0;
@@ -21,10 +21,10 @@ body {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Table */
-  table {
+  } */
+
+/* Table */
+/* table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 2rem;
@@ -43,10 +43,10 @@ body {
   
   table tbody tr:nth-child(even) {
     background-color: #f9f9f9;
-  }
-  
-  /* Formulaire */
-  form {
+  } */
+
+/* Formulaire */
+/* form {
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -86,10 +86,10 @@ body {
   
   button:hover:not(:disabled) {
     background-color: #0056b3;
-  }
-  
-  /* Responsive */
-  @media (max-width: 768px) {
+  } */
+
+/* Responsive */
+/* @media (max-width: 768px) {
     .add-professor-form {
       padding: 1rem;
     }
@@ -101,4 +101,4 @@ body {
     input, select, button {
       font-size: 0.9rem;
     }
-  }
+  } */

@@ -1,48 +1,51 @@
-import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/login';
-import Header from './components/header';
-import Footer from './components/footer';
-import Planning from './pages/Planning'; 
 import Dashboard from './pages/dashboard';
-import Navbar from './components/navbar';
-import HomePage from './pages/HomePage';
-import FilierePage from './pages/filiere';
-import ListeTeachers from './pages/listeTeachers';
-import { supabase } from "../supabaseClient";
-import "./styles/Auth.css";
+import './assets/styles/Auth.css';
+import DashboardLayout from './layout/DashboardLayout';
+import PlanningsPage from './pages/plannings';
+import AdvancedManagement from './pages/advanced-management';
+import TeacherPlanning from './pages/teacher-planning';
+import TeacherAvailabilities from './pages/teacher-availabilities';
+import StudentPlanning from './pages/student-planning';
+import { useUser } from './context/user-context';
 
-const App = () => {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    getUsers();
-  }, []);
-
-  const getUsers = async () => {
-    const { data, error } = await supabase.from('users_hackathon').select();
-    if (error) 
-      console.error('error', error);
-    else setUsers(data);
-  };
-
-const App = () => {
+function App() {
+  const { user } = useUser();
   return (
     <BrowserRouter>
-      <Header />
       <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/homePage" element={<HomePage />} />
-        <Route path="/fields" element={<FilierePage />} />
-        <Route path="/teachers_list" element={<ListeTeachers />} />
-        <Route path="/planning" element={<Planning />} />
-        {/* Ajoute d'autres routes si nécessaire */}
+
+        <Route element={<DashboardLayout />}>
+          <Route
+            path="/"
+            element={
+              user !== null ? (
+                user.role === 'teacher' ? (
+                  <Navigate to="/teacher-planning" />
+                ) : user.role === 'student' ? (
+                  <Navigate to="/student-planning" />
+                ) : (
+                  <Dashboard />
+                )
+              ) : (
+                <Dashboard />
+              )
+            }
+          />
+          <Route path="/plannings" element={<PlanningsPage />} />
+          <Route path="/advanced-management" element={<AdvancedManagement />} />
+          <Route path="/teacher-planning" element={<TeacherPlanning />} />
+          <Route
+            path="/teacher-availabilities"
+            element={<TeacherAvailabilities />}
+          />
+          <Route path="/student-planning" element={<StudentPlanning />} />
+        </Route>
       </Routes>
-      <Footer />
     </BrowserRouter>
   );
 }
-export default App;
 
+export default App;

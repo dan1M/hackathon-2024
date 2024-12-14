@@ -1,46 +1,66 @@
 .filieres-container {
-    padding: 20px;
-    text-align: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #f9f9f9; /* Couleur de fond claire pour contraster avec les cartes */
+}
+
+.page-title {
+  font-size: 2.5rem;
+  margin-bottom: 40px;
+  color: #333;
+  font-weight: bold;
+}
+
+.filieres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Colonnes flexibles */
+  gap: 30px; /* Plus d'espace entre les cartes */
+}
+
+.filiere-card {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Ombre plus marquée pour un effet de profondeur */
+  overflow: hidden;
+  padding: 2rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* Ajout d'une animation de transition */
+}
+
+.filiere-card:hover {
+  transform: translateY(-10px); /* Effet de survol pour faire ressortir les cartes */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Ombre plus marquée au survol */
+}
+
+.filiere-icon {
+  font-size: 3rem;
+  color: #4c4faf; /* Couleur d'icône différente pour attirer l'attention */
+  margin-bottom: 15px;
+}
+
+.filiere-content {
+  padding: 20px 0;
+}
+
+.filiere-name {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  color: #333;
+  font-weight: bold;
+}
+
+.filiere-description {
+  font-size: 1.1rem;
+  color: #555;
+  line-height: 1.6;
+  text-align: justify; /* Meilleure lisibilité du texte */
+}
+
+@media (max-width: 768px) {
+  .filieres-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Colonnes flexibles sur mobile */
   }
   
   .page-title {
-    font-size: 2rem;
-    margin-bottom: 20px;
+    font-size: 2rem; /* Taille de titre réduite sur mobile */
   }
-  
-  .filieres-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 colonnes */
-    grid-template-rows: repeat(2, 1fr); /* 2 lignes */
-    gap: 20px;
-  }
-  
-  .filiere-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    padding: 2rem;
-  }
-  
-  .filiere-image {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-    border-bottom: 2px solid #ddd;
-  }
-  
-  .filiere-content {
-    padding: 20px;
-  }
-  
-  .filiere-name {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-  }
-  
-  .filiere-description {
-    font-size: 1rem;
-    color: #555;
-  }
-  
+}
