@@ -254,7 +254,7 @@ const DashboardLayout = () => {
   }
 
   return (
-    <Box minH="100vh" bg={'gray.100'}>
+    <Box minH="100vh">
       <SidebarContent
         onClose={() => onClose}
         display={{ base: 'none', md: 'block' }}
@@ -273,7 +273,7 @@ const DashboardLayout = () => {
       </Drawer>
       {/* mobilenav */}
       <MobileNav onOpen={onOpen} />
-      <Box ml={{ base: 0, md: 60 }} p="4">
+      <Box ml={{ base: 0, md: 60 }} p={8}>
         <Outlet />
       </Box>
     </Box>

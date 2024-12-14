@@ -1,20 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid'; // Week/Day view
 import dayGridPlugin from '@fullcalendar/daygrid'; // Month view
 import interactionPlugin from '@fullcalendar/interaction'; // For interactions
 import { Modal, Button, Form } from 'react-bootstrap';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
+import { supabase } from '../utils/supabaseClient';
 
 const Planning = () => {
   const [events, setEvents] = useState([]); // Calendar events
   const [courses, setCourses] = useState([]); // Courses data
   const [slots, setSlots] = useState([
-    { start: "09:00", end: "12:30" },
-    { start: "13:30", end: "17:00" },
-    { start: "17:15", end: "19:00" },
+    { start: '09:00', end: '12:30' },
+    { start: '13:30', end: '17:00' },
+    { start: '17:15', end: '19:00' },
   ]); // Default school slots
   const [holidays, setHolidays] = useState([]); // French holidays
   const [eventForm, setEventForm] = useState({
@@ -39,7 +37,9 @@ const Planning = () => {
     try {
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('*, courses(name, description), users_hackathon(name), classroom(name), classes(name)');
+        .select(
+          '*, courses(name, description), users_hackathon(name), classroom(name), classes(name)'
+        );
 
       if (error) throw error;
 
@@ -78,7 +78,9 @@ const Planning = () => {
 
   const fetchCourses = async () => {
     try {
-      const { data: fetchedCourses, error } = await supabase.from('courses').select('*');
+      const { data: fetchedCourses, error } = await supabase
+        .from('courses')
+        .select('*');
       if (error) throw error;
       setCourses(fetchedCourses);
     } catch (error) {
@@ -92,28 +94,26 @@ const Planning = () => {
         .from('time_slots')
         .select('start_time, end_time')
         .order('start_time', { ascending: true });
-  
+
       if (error) throw error;
-  
+
       const formattedSlots = fetchedSlots.map((slot) => ({
         start: slot.start_time.slice(0, 5),
         end: slot.end_time.slice(0, 5),
       }));
-  
+
       setSlots(formattedSlots);
     } catch (error) {
       console.error('Error fetching slots:', error);
-  
+
       // Use fallback default slots
       setSlots([
-        { start: "09:00", end: "12:30" },
-        { start: "13:30", end: "17:00" },
-        { start: "17:15", end: "19:00" },
+        { start: '09:00', end: '12:30' },
+        { start: '13:30', end: '17:00' },
+        { start: '17:15', end: '19:00' },
       ]);
     }
   };
-  
-  
 
   const fetchClassrooms = async () => {
     try {
@@ -131,7 +131,7 @@ const Planning = () => {
     try {
       const { data: fetchedClasses, error } = await supabase
         .from('classes')
-        .select('id, name'); 
+        .select('id, name');
       if (error) throw error;
       setClasses(fetchedClasses);
     } catch (error) {
@@ -163,8 +163,8 @@ const Planning = () => {
     fetchHolidays();
   }, []);
 
-  const isSunday = (date) => date.getDay() === 0;
-  const isHoliday = (date) => holidays.includes(date.toISOString().split('T')[0]);
+  const isHoliday = (date) =>
+    holidays.includes(date.toISOString().split('T')[0]);
 
   const handleEventDrop = async (info) => {
     const { id } = info.event;
@@ -218,16 +218,16 @@ const Planning = () => {
       date,
       color,
     } = eventForm;
-  
+
     const normalizeTime = (time) => time.slice(0, 5).trim();
-  
+
     // Check if the lesson aligns with the slots
     const isValidSlot = slots.some((slot, index) => {
       // Single-slot validation
       const matchesSingleSlot =
         normalizeTime(slot.start) === normalizeTime(start) &&
         normalizeTime(slot.end) === normalizeTime(end);
-  
+
       // Multi-slot validation (lesson spans across multiple slots)
       if (!matchesSingleSlot && index > 0) {
         const previousSlot = slots[index - 1];
@@ -236,21 +236,33 @@ const Planning = () => {
           normalizeTime(slot.end) === normalizeTime(end)
         );
       }
-  
+
       return matchesSingleSlot;
     });
-  
+
     if (!isValidSlot) {
-      alert(`Les horaires sélectionnés (${start} - ${end}) ne respectent pas les créneaux disponibles !`);
+      alert(
+        `Les horaires sélectionnés (${start} - ${end}) ne respectent pas les créneaux disponibles !`
+      );
       return;
     }
-  
+
     // Ensure required fields are filled
-    if (!start || !end || !courseId || !teacherId || !classroomId || !classId || !date) {
-      alert('Veuillez remplir tous les champs obligatoires avant de sauvegarder.');
+    if (
+      !start ||
+      !end ||
+      !courseId ||
+      !teacherId ||
+      !classroomId ||
+      !classId ||
+      !date
+    ) {
+      alert(
+        'Veuillez remplir tous les champs obligatoires avant de sauvegarder.'
+      );
       return;
     }
-  
+
     const lessonData = {
       date,
       start_time: normalizeTime(start),
@@ -261,7 +273,7 @@ const Planning = () => {
       class_id: classId,
       color,
     };
-  
+
     try {
       if (eventForm.id) {
         // Update existing lesson
@@ -269,9 +281,9 @@ const Planning = () => {
           .from('lessons')
           .update(lessonData)
           .eq('id', eventForm.id);
-  
+
         if (error) throw error;
-  
+
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
             event.id === eventForm.id
@@ -284,7 +296,7 @@ const Planning = () => {
               : event
           )
         );
-  
+
         alert('Cours mis à jour avec succès !');
       } else {
         // Create new lesson
@@ -292,9 +304,9 @@ const Planning = () => {
           .from('lessons')
           .insert(lessonData)
           .select();
-  
+
         if (error) throw error;
-  
+
         setEvents((prevEvents) => [
           ...prevEvents,
           {
@@ -304,18 +316,16 @@ const Planning = () => {
             end: `${date}T${normalizeTime(end)}:00`,
           },
         ]);
-  
+
         alert('Cours ajouté avec succès !');
       }
-  
+
       setShowEventModal(false);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du cours :', error);
       alert('Échec de la sauvegarde du cours. Veuillez réessayer.');
     }
   };
-  
-  
 
   const handleDeleteEvent = async () => {
     const { id } = eventForm;
@@ -325,7 +335,9 @@ const Planning = () => {
         const { error } = await supabase.from('lessons').delete().eq('id', id);
         if (error) throw error;
 
-        setEvents((prevEvents) => prevEvents.filter((event) => event.id !== id));
+        setEvents((prevEvents) =>
+          prevEvents.filter((event) => event.id !== id)
+        );
         setShowEventModal(false);
         alert('Course deleted successfully!');
       } catch (error) {
@@ -345,16 +357,16 @@ const Planning = () => {
         allDaySlot={false}
         editable={true}
         selectable={true}
+        hiddenDays={[0]} // Hide Sunday
+        height={'auto'}
         slotMinTime={slots[0].start}
         slotMaxTime={slots[slots.length - 1].end}
         select={(info) => {
           const date = new Date(info.start);
-          if (isSunday(date)) {
-            alert('Vous ne pouvez pas ajouter de cours le dimanche !');
-            return;
-          }
           if (isHoliday(date)) {
-            alert('Vous ne pouvez pas ajouter de cours pendant les jours fériés !');
+            alert(
+              'Vous ne pouvez pas ajouter de cours pendant les jours fériés !'
+            );
             return;
           }
 
@@ -384,10 +396,18 @@ const Planning = () => {
         }}
         eventClick={(info) => {
           const event = events.find((e) => e.id === parseInt(info.event.id));
-          const linkedCourse = courses.find((course) => course.id === event.extendedProps.courseId);
-          const linkedTeacher = teachers.find((teacher) => teacher.id === event.extendedProps.teacherId);
-          const linkedClassroom = classrooms.find((classroom) => classroom.id === event.extendedProps.classroomId);
-          const linkedClass = classes.find((classItem) => classItem.id === event.extendedProps.classId);
+          const linkedCourse = courses.find(
+            (course) => course.id === event.extendedProps.courseId
+          );
+          const linkedTeacher = teachers.find(
+            (teacher) => teacher.id === event.extendedProps.teacherId
+          );
+          const linkedClassroom = classrooms.find(
+            (classroom) => classroom.id === event.extendedProps.classroomId
+          );
+          const linkedClass = classes.find(
+            (classItem) => classItem.id === event.extendedProps.classId
+          );
           setEventForm({
             id: event.id,
             title: linkedCourse?.name || '',
@@ -408,7 +428,9 @@ const Planning = () => {
 
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{eventForm.id ? 'Modifier le cours' : 'Ajouter un cours'}</Modal.Title>
+          <Modal.Title>
+            {eventForm.id ? 'Modifier le cours' : 'Ajouter un cours'}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
@@ -418,7 +440,9 @@ const Planning = () => {
                 name="courseId"
                 value={eventForm.courseId || ''}
                 onChange={(e) => {
-                  const selectedCourse = courses.find((course) => course.id === parseInt(e.target.value));
+                  const selectedCourse = courses.find(
+                    (course) => course.id === parseInt(e.target.value)
+                  );
                   setEventForm({
                     ...eventForm,
                     courseId: selectedCourse?.id,
@@ -441,7 +465,12 @@ const Planning = () => {
               <Form.Select
                 name="classId"
                 value={eventForm.classId || ''}
-                onChange={(e) => setEventForm({ ...eventForm, classId: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setEventForm({
+                    ...eventForm,
+                    classId: parseInt(e.target.value),
+                  })
+                }
               >
                 <option value="">-- Aucune classe assignée --</option>
                 {classes.map((classItem) => (
@@ -457,7 +486,12 @@ const Planning = () => {
               <Form.Select
                 name="teacherId"
                 value={eventForm.teacherId || ''}
-                onChange={(e) => setEventForm({ ...eventForm, teacherId: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setEventForm({
+                    ...eventForm,
+                    teacherId: parseInt(e.target.value),
+                  })
+                }
               >
                 <option value="">-- Aucun professeur assigné --</option>
                 {teachers.map((teacher) => (
@@ -472,7 +506,12 @@ const Planning = () => {
               <Form.Select
                 name="classroomId"
                 value={eventForm.classroomId || ''}
-                onChange={(e) => setEventForm({ ...eventForm, classroomId: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setEventForm({
+                    ...eventForm,
+                    classroomId: parseInt(e.target.value),
+                  })
+                }
               >
                 <option value="">-- Aucune salle assignée --</option>
                 {classrooms.map((classroom) => (
@@ -489,7 +528,9 @@ const Planning = () => {
                 rows={3}
                 name="description"
                 value={eventForm.description}
-                onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                onChange={(e) =>
+                  setEventForm({ ...eventForm, description: e.target.value })
+                }
               />
             </Form.Group>
             <Form.Group controlId="slotSelect" className="mb-3">
@@ -510,13 +551,14 @@ const Planning = () => {
             </Form.Group>
 
             <Form.Group controlId="eventColor" className="mb-3">
-              
-              <Form.Label>Couleur de l'Événement</Form.Label>
+              <Form.Label>Couleur de l&apos;Événement</Form.Label>
               <Form.Control
                 type="color"
                 name="color"
                 value={eventForm.color || '#007bff'} // Default to blue if no color is set
-                onChange={(e) => setEventForm({ ...eventForm, color: e.target.value })}
+                onChange={(e) =>
+                  setEventForm({ ...eventForm, color: e.target.value })
+                }
               />
             </Form.Group>
           </Form>
