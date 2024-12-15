@@ -20,6 +20,7 @@ import { generatePlanning } from '../utils/generate-planning';
 import { BsStars } from 'react-icons/bs';
 import { FaRegCalendarPlus } from 'react-icons/fa';
 import { Modal, Button as BsButton, Form } from 'react-bootstrap';
+import AiSuggestions from '../components/ai-suggestions';
 
 const initialSchoolYear = 2024;
 
@@ -384,6 +385,7 @@ const PlanningsPage = () => {
   console.log(eventForm);
   return (
     <Box>
+      <AiSuggestions />
       <Flex justify={'center'} mb={6}>
         <FormControl as={Box} w={'20rem'}>
           <FormLabel htmlFor="selected-class">Classe sélectionnée</FormLabel>
