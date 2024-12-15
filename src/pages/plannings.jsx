@@ -19,12 +19,15 @@ import { Draggable } from '@fullcalendar/interaction/index.js';
 import { generatePlanning } from '../utils/generate-planning';
 import { BsStars } from 'react-icons/bs';
 import { FaRegCalendarPlus } from 'react-icons/fa';
+import { Modal, Button as BsButton, Form } from 'react-bootstrap';
 
 const initialSchoolYear = 2024;
 
 const PlanningsPage = () => {
   const t = useToast();
   const d = getDayjs();
+  const [schoolRooms, setSchoolRooms] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState();
   const [currentView, setCurrentView] = useState('multiMonthYear');
@@ -39,6 +42,22 @@ const PlanningsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [aiLessonsList, setAiLessonsList] = useState([]);
 
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventForm, setEventForm] = useState({
+    id: null,
+    title: '',
+    start: '',
+    date: '',
+    end: '',
+    description: '',
+    courseId: null,
+    teacherId: null,
+    classroomId: null,
+    color: '#007bff', // Default to blue
+  });
+
+  const firstWeekOfSchool = d(`${initialSchoolYear}-09-01`).week();
+
   const fetchClasses = async () => {
     try {
       const { data: fetchedClasses, error } = await supabase
@@ -51,7 +70,30 @@ const PlanningsPage = () => {
     }
   };
 
-  const firstWeekOfSchool = d(`${initialSchoolYear}-09-01`).week();
+  const fetchClassrooms = async () => {
+    try {
+      const { data: fetchedClassrooms, error } = await supabase
+        .from('classroom')
+        .select('*');
+      if (error) throw error;
+      setSchoolRooms(fetchedClassrooms);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des salles:', error);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      const { data: fetchedTeachers, error } = await supabase
+        .from('users_hackathon')
+        .select('*')
+        .eq('role', 'teacher');
+      if (error) throw error;
+      setTeachers(fetchedTeachers);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des enseignants:', error);
+    }
+  };
 
   const updateClassAvailableWeeks = async () => {
     if (!selectedClass) return;
@@ -228,8 +270,88 @@ const PlanningsPage = () => {
     setClassExistingLessons(fetchedLessons);
   };
 
+  const handleSaveEvent = async () => {
+    const { start, end, courseId, teacherId, classroomId, date, color } =
+      eventForm;
+
+    const normalizeTime = (time) => time.slice(0, 5).trim();
+
+    // Ensure required fields are filled
+    if (
+      !start ||
+      !end ||
+      !courseId ||
+      !teacherId ||
+      !classroomId ||
+      !selectedClass ||
+      !date
+    ) {
+      alert(
+        'Veuillez remplir tous les champs obligatoires avant de sauvegarder.'
+      );
+      return;
+    }
+
+    const lessonData = {
+      date,
+      start_time: normalizeTime(start),
+      end_time: normalizeTime(end),
+      course_id: courseId,
+      teacher_id: teacherId,
+      classroom_id: classroomId,
+      class_id: selectedClass,
+      color,
+    };
+
+    try {
+      if (eventForm.id) {
+        // Update existing lesson
+        const { error } = await supabase
+          .from('lessons')
+          .update(lessonData)
+          .eq('id', eventForm.id);
+
+        if (error) throw error;
+
+        getClassExistingLessons();
+      } else {
+        // Create new lesson
+        const { error } = await supabase
+          .from('lessons')
+          .insert(lessonData)
+          .select();
+
+        if (error) throw error;
+
+        getClassExistingLessons();
+      }
+
+      setShowEventModal(false);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du cours :', error);
+      alert('Échec de la sauvegarde du cours. Veuillez réessayer.');
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    const { id } = eventForm;
+    if (id) {
+      try {
+        const { error } = await supabase.from('lessons').delete().eq('id', id);
+        if (error) throw error;
+
+        setShowEventModal(false);
+        getClassExistingLessons();
+      } catch (error) {
+        console.error('Error deleting event:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchClasses();
+    fetchClassrooms();
+    fetchTeachers();
   }, []);
 
   useEffect(() => {
@@ -251,7 +373,7 @@ const PlanningsPage = () => {
     const draggable = new Draggable(draggableEl, {
       itemSelector: '.fc-event',
       eventData: (event) => {
-        return {};
+        return JSON.parse(event.getAttribute('data-event'));
       },
     });
     return () => {
@@ -259,6 +381,7 @@ const PlanningsPage = () => {
     };
   });
 
+  console.log(eventForm);
   return (
     <Box>
       <Flex justify={'center'} mb={6}>
@@ -379,6 +502,12 @@ const PlanningsPage = () => {
                   mr={4}
                   cursor={'grab'}
                   draggable
+                  data-event={JSON.stringify({
+                    title: course.name,
+                    duration: '03:30',
+                    color: course.color,
+                    create: true,
+                  })}
                 >
                   <Text m={0}>{course.name}</Text>
                   <Text m={0}>
@@ -420,7 +549,7 @@ const PlanningsPage = () => {
             </Button>
             <Flex justify={'space-around'} hidden={aiLessonsList.length === 0}>
               <Button
-                bgColor={'green.100'}
+                bgColor={'green.200'}
                 onClick={() => setAiLessonsList([])}
               >
                 Accepter
@@ -467,6 +596,9 @@ const PlanningsPage = () => {
             end: `${lesson.date}T${lesson.end_time}`,
             color: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
               ?.color,
+            teacher_id: lesson.teacher_id,
+            classroom_id: lesson.classroom_id,
+            class_id: lesson.class_id,
           }))}
           aiEvents={aiLessonsList.map((lesson) => ({
             title: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
@@ -484,8 +616,120 @@ const PlanningsPage = () => {
               ? undefined
               : 'Sélectionnez une classe pour affecter les cours'
           }
+          handleEventClick={(arg) => {
+            const event = arg.event;
+            setEventForm({
+              id: event.id,
+              title: event.title,
+              start: event.startStr.slice(11, 16),
+              end: event.endStr.slice(11, 16),
+              description: event.extendedProps.description || '',
+              courseId: classCoursesToPlace.find(
+                (course) => course.name === event.title
+              )?.id,
+              teacherId: event.extendedProps.teacher_id,
+              classroomId: event.extendedProps.classroom_id,
+              color: event.backgroundColor,
+              date: event.startStr.split('T')[0],
+            });
+            setShowEventModal(true);
+          }}
         />
       </Flex>
+
+      <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {eventForm.id ? 'Modifier le cours' : 'Ajouter un cours'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group controlId="eventTitle" className="mb-3">
+              <Form.Label>Nom du Cours</Form.Label>
+              <Form.Select
+                name="courseId"
+                value={eventForm.courseId || ''}
+                onChange={(e) => {
+                  const selectedCourse = classCoursesToPlace.find(
+                    (course) => course.id === parseInt(e.target.value)
+                  );
+                  setEventForm({
+                    ...eventForm,
+                    courseId: selectedCourse?.id,
+                    title: selectedCourse?.name,
+                    description: selectedCourse?.description || '',
+                  });
+                }}
+              >
+                <option value="">-- Sélectionner un cours --</option>
+                {classCoursesToPlace.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group controlId="teacherSelect" className="mb-3">
+              <Form.Label>Sélectionner un professeur</Form.Label>
+              <Form.Select
+                name="teacherId"
+                value={eventForm.teacherId || ''}
+                onChange={(e) =>
+                  setEventForm({
+                    ...eventForm,
+                    teacherId: parseInt(e.target.value),
+                  })
+                }
+              >
+                <option value="">-- Aucun professeur assigné --</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group controlId="classroomSelect" className="mb-3">
+              <Form.Label>Sélectionner une salle</Form.Label>
+              <Form.Select
+                name="classroomId"
+                value={eventForm.classroomId || ''}
+                onChange={(e) =>
+                  setEventForm({
+                    ...eventForm,
+                    classroomId: parseInt(e.target.value),
+                  })
+                }
+              >
+                <option value="">-- Aucune salle assignée --</option>
+                {schoolRooms.map((classroom) => (
+                  <option key={classroom.id} value={classroom.id}>
+                    {classroom.name}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          {eventForm.id && (
+            <BsButton variant="danger" onClick={handleDeleteEvent}>
+              Supprimer
+            </BsButton>
+          )}
+          <BsButton
+            variant="secondary"
+            onClick={() => setShowEventModal(false)}
+          >
+            Fermer
+          </BsButton>
+          <BsButton variant="primary" onClick={handleSaveEvent}>
+            Enregistrer les modifications
+          </BsButton>
+        </Modal.Footer>
+      </Modal>
     </Box>
   );
 };

@@ -20,6 +20,7 @@ const CustomCalendar = ({
   backgroundEvents = [],
   events = [],
   aiEvents = [],
+  handleEventClick,
 }) => {
   const d = getDayjs();
 
@@ -66,9 +67,37 @@ const CustomCalendar = ({
     fetchSlots();
   }, []);
 
+  const handleDateClick = (arg) => {
+    if (!isDisabled) {
+      calendarRef.current.getApi().changeView('timeGridWeek', arg.date);
+    }
+  };
+
+  const calendarRef = useRef(null);
+
+  const handleEventDrop = (info) => {
+    const eventStart = info.event.start;
+    const eventEnd = info.event.end;
+
+    const isWithinSlot = slots.some((slot) => {
+      const slotStart = d(eventStart)
+        .set('hour', slot.start.split(':')[0])
+        .set('minute', slot.start.split(':')[1]);
+      const slotEnd = d(eventEnd)
+        .set('hour', slot.end.split(':')[0])
+        .set('minute', slot.end.split(':')[1]);
+      return eventStart >= slotStart && eventEnd <= slotEnd;
+    });
+
+    if (!isWithinSlot) {
+      info.revert();
+    }
+  };
+
   return (
     <Box style={{ position: 'relative' }}>
       <FullCalendar
+        ref={calendarRef}
         plugins={[
           timeGridPlugin,
           dayGridPlugin,
@@ -110,6 +139,9 @@ const CustomCalendar = ({
         slotMaxTime={slots[slots.length - 1].end}
         datesSet={handleDatesSet}
         events={[...backgroundEvents, ...events, ...aiEvents]}
+        dateClick={handleDateClick}
+        eventDrop={handleEventDrop}
+        eventClick={handleEventClick}
       />
       {isDisabled && disabledText && (
         <Center
@@ -140,6 +172,7 @@ CustomCalendar.propTypes = {
   backgroundEvents: PropTypes.array,
   events: PropTypes.array,
   aiEvents: PropTypes.array,
+  handleEventClick: PropTypes.func,
 };
 
 export default CustomCalendar;
