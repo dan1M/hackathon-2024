@@ -120,9 +120,8 @@ export const generateAndSavePlanningWithAI = async (startDate, acceptSave = fals
 
     let planning;
     try {
-      // Supprimer les backticks potentiels et parser la réponse
       const cleanedResponse = planningResponse.replace(/```json|```/g, "").trim();
-      planning = JSON.parse(cleanedResponse); // Convertit en objet JSON
+      planning = JSON.parse(cleanedResponse);
     } catch (error) {
       console.error("Erreur lors de la conversion de la réponse en JSON :", error);
       throw new Error("La réponse de OpenAI ne peut pas être interprétée comme JSON.");
