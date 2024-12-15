@@ -14,6 +14,7 @@ import { FormControl, FormLabel } from 'react-bootstrap';
 import CustomCalendar from '../components/custom-calendar';
 import { supabase } from '../utils/supabaseClient';
 import YearWeeksGrid from '../components/YearWeeksGrid';
+import { Draggable } from '@fullcalendar/interaction/index.js';
 
 const initialSchoolYear = 2024;
 
@@ -26,6 +27,8 @@ const PlanningsPage = () => {
   const [currentView, setCurrentView] = useState('multiMonthYear');
   const [classCoursesToPlace, setClassCoursesToPlace] = useState([]);
   const [classSchoolWeeks, setClassSchoolWeeks] = useState([]);
+  const [classExistingLessons, setClassExistingLessons] = useState([]);
+  const [selectedSemester, setSelectedSemester] = useState(1);
 
   const fetchClasses = async () => {
     try {
@@ -93,6 +96,37 @@ const PlanningsPage = () => {
     }
   };
 
+  const getClassCoursesToPlace = async () => {
+    if (!selectedClass) return;
+
+    const { data: fetchedCourses, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('semester', selectedSemester)
+      .eq(
+        'school_field_level_id',
+        classes.find((classe) => classe.id == selectedClass)
+          .school_field_level_id
+      );
+    if (error)
+      return console.error('Erreur lors de la récupération des cours:', error);
+    setClassCoursesToPlace(fetchedCourses);
+  };
+
+  const getClassExistingLessons = async () => {
+    if (!selectedClass) return;
+    // get lessons of the selected class where date is between the start and end of the school year
+    const { data: fetchedLessons, error } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('class_id', selectedClass)
+      .gte('date', `${initialSchoolYear}-09-01`)
+      .lte('date', `${initialSchoolYear + 1}-08-31`);
+    if (error)
+      return console.error('Erreur lors de la récupération des cours:', error);
+    setClassExistingLessons(fetchedLessons);
+  };
+
   useEffect(() => {
     fetchClasses();
   }, []);
@@ -106,7 +140,23 @@ const PlanningsPage = () => {
     setClassSchoolWeeks(
       classes.find((classe) => classe.id == selectedClass).available_weeks
     );
-  }, [selectedClass]);
+    getClassCoursesToPlace();
+    getClassExistingLessons();
+  }, [selectedClass, selectedSemester]);
+
+  useEffect(() => {
+    const draggableEl = document.getElementById('external-events');
+    if (!draggableEl) return;
+    const draggable = new Draggable(draggableEl, {
+      itemSelector: '.fc-event',
+      eventData: (event) => {
+        return {};
+      },
+    });
+    return () => {
+      draggable.destroy();
+    };
+  });
 
   return (
     <Box>
@@ -185,16 +235,62 @@ const PlanningsPage = () => {
           overflow={'auto'}
           hidden={!selectedClass}
         >
-          <Text mb={4}>Matières à placer</Text>
+          <Flex align={'center'} gap={4} mb={4}>
+            <Text m={0}>Matières à placer</Text>
+            <Select
+              w={'10rem'}
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(parseInt(e.target.value))}
+            >
+              <option value={1}>Semestre 1</option>
+              <option value={2}>Semestre 2</option>
+            </Select>
+          </Flex>
           {classCoursesToPlace.length === 0 && (
             <Text textAlign={'center'} color={'gray'}>
               Aucune matière à placer pour cette classe
             </Text>
           )}
+
+          <Flex id="external-events">
+            {classCoursesToPlace.map((course) => {
+              const consumedTime = classExistingLessons
+                .filter((lesson) => lesson.course_id === course.id)
+                .reduce((acc, lesson) => {
+                  const start = d(lesson.date + 'T' + lesson.start_time);
+                  const end = d(lesson.date + 'T' + lesson.end_time);
+                  const duration = end.diff(start, 'minute') / 60;
+                  return acc + duration;
+                }, 0);
+
+              return (
+                <Flex
+                  key={course.id}
+                  className="fc-event"
+                  justify={'space-between'}
+                  align={'center'}
+                  bg={course.color}
+                  color={'white'}
+                  p={2}
+                  px={4}
+                  rounded={'md'}
+                  flexDir={'column'}
+                  mr={4}
+                  cursor={'grab'}
+                  draggable
+                >
+                  <Text m={0}>{course.name}</Text>
+                  <Text m={0}>
+                    {consumedTime + '/' + course.hourly_volume}h
+                  </Text>
+                </Flex>
+              );
+            })}
+          </Flex>
         </Box>
         <Flex
           justify={'space-between'}
-          // hidden={!selectedClass || classCoursesToPlace.length === 0}
+          hidden={!selectedClass || classCoursesToPlace.length === 0}
         >
           <Button bgColor={'blue.100'} onClick={generateClassPlanning}>
             Placement automatique (
@@ -235,6 +331,14 @@ const PlanningsPage = () => {
                 };
               })
           }
+          events={classExistingLessons.map((lesson) => ({
+            id: lesson.id,
+            title: lesson.course_id,
+            start: `${lesson.date}T${lesson.start_time}`,
+            end: `${lesson.date}T${lesson.end_time}`,
+            color: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
+              ?.color,
+          }))}
           setCurrentView={setCurrentView}
           isDisabled={!selectedClass}
           disabledText={

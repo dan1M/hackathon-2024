@@ -18,6 +18,7 @@ const CustomCalendar = ({
   disabledText,
   initialSchoolYear,
   backgroundEvents = [],
+  events = [],
 }) => {
   const d = getDayjs();
 
@@ -94,6 +95,7 @@ const CustomCalendar = ({
         locale="fr"
         firstDay={1}
         allDaySlot={false}
+        droppable={!isDisabled}
         editable={!isDisabled}
         selectable={!isDisabled}
         hiddenDays={[0]} // Hide Sunday
@@ -101,7 +103,7 @@ const CustomCalendar = ({
         slotMinTime={slots[0].start}
         slotMaxTime={slots[slots.length - 1].end}
         datesSet={handleDatesSet}
-        events={[...backgroundEvents]}
+        events={[...backgroundEvents, ...events]}
       />
       {isDisabled && disabledText && (
         <Center
@@ -130,6 +132,7 @@ CustomCalendar.propTypes = {
   disabledText: PropTypes.string,
   initialSchoolYear: PropTypes.number.isRequired,
   backgroundEvents: PropTypes.array,
+  events: PropTypes.array,
 };
 
 export default CustomCalendar;
