@@ -13,9 +13,6 @@ export const fetchDataForPrompt = async () => {
     const { data: teachers, error: teachersError } = await supabase
       .from("teacher_availabilities")
       .select("*");
-    const { data: lessons, error: lessonsError } = await supabase
-      .from("lessons")
-      .select("*");
     const { data: classrooms, error: classroomsError } = await supabase
       .from("classroom")
       .select("*");
@@ -28,39 +25,19 @@ export const fetchDataForPrompt = async () => {
       classesError ||
       teachersError ||
       classroomsError ||
-      slotsError ||
-      lessonsError
+      slotsError
     ) {
       throw new Error("Erreur lors de la récupération des données depuis Supabase");
     }
 
-    return { courses, classes, teachers, classrooms, slots, lessons };
+    return { courses, classes, teachers, classrooms, slots };
   } catch (error) {
     console.error("Erreur lors de la récupération des données Supabase :", error);
     throw new Error("Impossible de récupérer les données");
   }
 };
 
-// Fonction pour générer les 5 jours ouvrés d'une semaine donnée
-const getWorkingDaysForWeek = (startDate) => {
-  const dates = [];
-  let currentDate = dayjs(startDate);
-
-  // Générer 5 jours ouvrés (lundi à vendredi)
-  while (dates.length < 5) {
-    const day = currentDate.day(); // 1 = Lundi, ..., 5 = Vendredi
-    if (day >= 1 && day <= 5) {
-      dates.push(currentDate.format("YYYY-MM-DD"));
-    }
-    currentDate = currentDate.add(1, "day");
-  }
-
-  return dates;
-};
-
-// Fonction pour générer le prompt
-const generatePrompt = (data, dates) => {
-  // Création des dates avec les slots horaires
+const generatePrompt = (data, dates, existingLessons) => {
   const datesWithSlots = dates.map((date) => ({
     date,
     slots: data.slots.map((slot) => ({
@@ -78,49 +55,48 @@ const generatePrompt = (data, dates) => {
     - **Professeurs et leurs disponibilités (y compris contraintes récurrentes)** : ${JSON.stringify(data.teachers)}
     - **Salles de classe** : ${JSON.stringify(data.classrooms)}
     - **Dates et créneaux horaires** : ${JSON.stringify(datesWithSlots)}
+    - **Leçons existantes** : ${JSON.stringify(existingLessons)}
 
     **Contraintes :**
-    - Les créneaux horaires sont fixes et définis dans le tableau des dates avec les créneaux horaires.
-    - Très IMPORTANT, chaque cours doit être assigné à un professeur disponible à vérifier dans les données.
-    - Les professeurs peuvent avoir des absences récurrentes ou des périodes d'indisponibilité.
-    - Les salles doivent être disponibles pour chaque créneau.
-    - Les cours ne doivent pas se chevaucher pour une même classe ou un même professeur.
-    - Les cours annulés peuvent être rattrapés dans le créneau du soir (is_special = true).
-    - Respecter la disponibilité des classes par semaine. Et générer le semestre.
+    - Les créneaux horaires sont définis dans le tableau des dates et créneaux horaires.
+    - Chaque date peut comporter plusieurs cours dans différents créneaux horaires.
+    - Les créneaux horaires disponibles en priorité sont : 09:00 à 12:30, 13:30 à 17:00, et en cas d'annulation de cours de 17:15 à 19:00.
+    - Chaque cours doit être assigné à un professeur disponible et à une salle disponible.
+    - Les cours ne doivent pas se chevaucher pour une même classe, un même professeur ou une même salle.
+    - Respecter les disponibilités des classes, des professeurs, et des salles par semaine et par mois.
+    - Prenez en compte les leçons existantes générées par OpenAI pour ne pas les dupliquer.
 
-    Retourne un tableau JSON où chaque entrée est une leçon avec les champs suivants et il me faut au moins 10 leçons:
-    - \`user_id\` : ID du professeur.
+    Retournez un tableau JSON où chaque entrée est une leçon avec les champs suivants :
+    - \`teacher_id\` : ID du professeur.
     - \`course_id\` : ID du cours.
     - \`class_id\` : ID de la classe.
     - \`classroom_id\` : ID de la salle.
     - \`date\` : Date du cours.
-    - \`heure_debut\` : Heure de début.
-    - \`heure_fin\` : Heure de fin.
+    - \`start_time\` : Heure de début.
+    - \`end_time\` : Heure de fin.
+    - \`generate_by\` : \`true\`.
 
-    ### Exemple de sortie attendue :
-    [
-      {
-        "user_id": 4,
-        "course_id": 1,
-        "class_id": 2,
-        "classroom_id": 1,
-        "date": "2024-09-23",
-        "heure_debut": "09:00:00",
-        "heure_fin": "12:30:00"
-      }
-    ]
+    Assurez-vous de générer plusieurs cours pour chaque date en fonction des créneaux horaires disponibles pour le mois.
   `;
 };
 
-export const generatePlanningWithAI = async (startDate) => {
+export const generateAndSavePlanningWithAI = async (startDate, acceptSave = false) => {
   try {
     const data = await fetchDataForPrompt();
 
-    // Obtenir les 5 jours ouvrés à partir de la date de début
-    const dates = getWorkingDaysForWeek(startDate);
+    const dates = getWorkingDaysForMonth(startDate);
+    const { data: existingLessons, error: existingLessonsError } = await supabase
+      .from("lessons")
+      .select("*")
+      .in("date", dates)
+      .eq("generate_by", true);
 
-    // Générer le prompt via la fonction dédiée
-    const prompt = generatePrompt(data, dates);
+    if (existingLessonsError) {
+      console.error("Erreur lors de la récupération des leçons existantes :", existingLessonsError);
+      throw new Error("Impossible de vérifier les leçons existantes.");
+    }
+
+    const prompt = generatePrompt(data, dates, existingLessons);
 
     const openai = new OpenAI({
       apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -144,16 +120,51 @@ export const generatePlanningWithAI = async (startDate) => {
 
     let planning;
     try {
-      planning = JSON.parse(planningResponse);
-      console.log("Planning JSON interprété :", planning);
+      // Supprimer les backticks potentiels et parser la réponse
+      const cleanedResponse = planningResponse.replace(/```json|```/g, "").trim();
+      planning = JSON.parse(cleanedResponse); // Convertit en objet JSON
     } catch (error) {
       console.error("Erreur lors de la conversion de la réponse en JSON :", error);
       throw new Error("La réponse de OpenAI ne peut pas être interprétée comme JSON.");
     }
 
-    return planning;
+    const lessonsToSave = planning.map((lesson) => ({
+      ...lesson,
+      generate_by: true,
+    }));
+
+    if (acceptSave) {
+      const { error: insertError } = await supabase.from("lessons").upsert(lessonsToSave);
+
+      if (insertError) {
+        console.error("Erreur lors de l'insertion des leçons :", insertError);
+        throw new Error("Impossible de sauvegarder les leçons générées.");
+      }
+
+      console.log("Les leçons générées ont été sauvegardées avec succès.");
+      return lessonsToSave;
+    } else {
+      console.log("Suggestions générées mais non sauvegardées :", lessonsToSave);
+      return lessonsToSave;
+    }
   } catch (error) {
-    console.error("Erreur lors de la génération du planning :", error);
-    throw new Error("Impossible de générer le planning avec OpenAI");
+    console.error("Erreur lors de la génération ou de la sauvegarde des leçons :", error);
+    throw new Error("Impossible de générer ou sauvegarder les leçons.");
   }
+};
+
+const getWorkingDaysForMonth = (startDate) => {
+  const dates = [];
+  let currentDate = dayjs(startDate).startOf("month");
+  const endOfMonth = dayjs(startDate).endOf("month");
+
+  while (currentDate.isBefore(endOfMonth) || currentDate.isSame(endOfMonth)) {
+    const day = currentDate.day();
+    if (day >= 1 && day <= 5) {
+      dates.push(currentDate.format("YYYY-MM-DD"));
+    }
+    currentDate = currentDate.add(1, "day");
+  }
+
+  return dates;
 };
