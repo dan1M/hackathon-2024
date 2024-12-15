@@ -1,27 +1,27 @@
-import OpenAI from "openai";
-import { supabase } from "./supabaseClient";
-import dayjs from "dayjs";
+import OpenAI from 'openai';
+import { supabase } from './supabaseClient';
+import dayjs from 'dayjs';
 
 export const fetchDataForPrompt = async () => {
   try {
     const { data: courses, error: coursesError } = await supabase
-      .from("courses")
-      .select("*");
+      .from('courses')
+      .select('*');
     const { data: classes, error: classesError } = await supabase
-      .from("class_availabilities")
-      .select("*");
+      .from('class_availabilities')
+      .select('*');
     const { data: teachers, error: teachersError } = await supabase
-      .from("teacher_availabilities")
-      .select("*");
+      .from('teacher_availabilities')
+      .select('*');
     const { data: lessons, error: lessonsError } = await supabase
-      .from("lessons")
-      .select("*");
+      .from('lessons')
+      .select('*');
     const { data: classrooms, error: classroomsError } = await supabase
-      .from("classroom")
-      .select("*");
+      .from('classroom')
+      .select('*');
     const { data: slots, error: slotsError } = await supabase
-      .from("time_slots")
-      .select("*");
+      .from('time_slots')
+      .select('*');
 
     if (
       coursesError ||
@@ -31,13 +31,18 @@ export const fetchDataForPrompt = async () => {
       slotsError ||
       lessonsError
     ) {
-      throw new Error("Erreur lors de la récupération des données depuis Supabase");
+      throw new Error(
+        'Erreur lors de la récupération des données depuis Supabase'
+      );
     }
 
     return { courses, classes, teachers, classrooms, slots, lessons };
   } catch (error) {
-    console.error("Erreur lors de la récupération des données Supabase :", error);
-    throw new Error("Impossible de récupérer les données");
+    console.error(
+      'Erreur lors de la récupération des données Supabase :',
+      error
+    );
+    throw new Error('Impossible de récupérer les données');
   }
 };
 
@@ -50,9 +55,9 @@ const getWorkingDaysForWeek = (startDate) => {
   while (dates.length < 5) {
     const day = currentDate.day(); // 1 = Lundi, ..., 5 = Vendredi
     if (day >= 1 && day <= 5) {
-      dates.push(currentDate.format("YYYY-MM-DD"));
+      dates.push(currentDate.format('YYYY-MM-DD'));
     }
-    currentDate = currentDate.add(1, "day");
+    currentDate = currentDate.add(1, 'day');
   }
 
   return dates;
@@ -75,7 +80,9 @@ const generatePrompt = (data, dates) => {
 
     - **Cours** : ${JSON.stringify(data.courses)}
     - **Classes et leurs disponibilités** : ${JSON.stringify(data.classes)}
-    - **Professeurs et leurs disponibilités (y compris contraintes récurrentes)** : ${JSON.stringify(data.teachers)}
+    - **Professeurs et leurs disponibilités (y compris contraintes récurrentes)** : ${JSON.stringify(
+      data.teachers
+    )}
     - **Salles de classe** : ${JSON.stringify(data.classrooms)}
     - **Dates et créneaux horaires** : ${JSON.stringify(datesWithSlots)}
 
@@ -88,7 +95,7 @@ const generatePrompt = (data, dates) => {
     - Les cours annulés peuvent être rattrapés dans le créneau du soir (is_special = true).
     - Respecter la disponibilité des classes par semaine. Et générer le semestre.
 
-    Retourne un tableau JSON où chaque entrée est une leçon avec les champs suivants et il me faut au moins 10 leçons:
+    Retourne un tableau JSON où chaque entrée est une leçon avec les champs suivants et il me faut au moins 10 leçons:
     - \`user_id\` : ID du professeur.
     - \`course_id\` : ID du cours.
     - \`class_id\` : ID de la classe.
@@ -97,7 +104,7 @@ const generatePrompt = (data, dates) => {
     - \`heure_debut\` : Heure de début.
     - \`heure_fin\` : Heure de fin.
 
-    ### Exemple de sortie attendue :
+    ### Exemple de sortie attendue :
     [
       {
         "user_id": 4,
@@ -128,10 +135,13 @@ export const generatePlanningWithAI = async (startDate) => {
     });
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: 'gpt-3.5-turbo',
       messages: [
-        { role: "system", content: "You are a scheduling assistant for a university." },
-        { role: "user", content: prompt },
+        {
+          role: 'system',
+          content: 'You are a scheduling assistant for a university.',
+        },
+        { role: 'user', content: prompt },
       ],
       temperature: 0.1,
       frequency_penalty: 0,
@@ -140,20 +150,25 @@ export const generatePlanningWithAI = async (startDate) => {
     });
 
     const planningResponse = response.choices[0].message.content.trim();
-    console.log("Réponse brute de OpenAI :", planningResponse);
+    console.log('Réponse brute de OpenAI :', planningResponse);
 
     let planning;
     try {
       planning = JSON.parse(planningResponse);
-      console.log("Planning JSON interprété :", planning);
+      console.log('Planning JSON interprété :', planning);
     } catch (error) {
-      console.error("Erreur lors de la conversion de la réponse en JSON :", error);
-      throw new Error("La réponse de OpenAI ne peut pas être interprétée comme JSON.");
+      console.error(
+        'Erreur lors de la conversion de la réponse en JSON :',
+        error
+      );
+      throw new Error(
+        'La réponse de OpenAI ne peut pas être interprétée comme JSON.'
+      );
     }
 
     return planning;
   } catch (error) {
-    console.error("Erreur lors de la génération du planning :", error);
-    throw new Error("Impossible de générer le planning avec OpenAI");
+    console.error('Erreur lors de la génération du planning :', error);
+    throw new Error('Impossible de générer le planning avec OpenAI');
   }
 };

@@ -3,7 +3,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'; // Week/Day view
 import dayGridPlugin from '@fullcalendar/daygrid'; // Month view
 import interactionPlugin from '@fullcalendar/interaction'; // For interactions
 import multiMonthPlugin from '@fullcalendar/multimonth'; // For multi-month view
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import getDayjs from '../utils/getDayjs';
 import { supabase } from '../utils/supabaseClient';
@@ -12,13 +12,14 @@ import { Box, Center, Heading } from '@chakra-ui/react';
 const CustomCalendar = ({
   initialView,
   availableViews,
-  setCurrentWeek,
   setCurrentView,
+  setCalendarViewDates,
   isDisabled,
   disabledText,
   initialSchoolYear,
   backgroundEvents = [],
   events = [],
+  aiEvents = [],
 }) => {
   const d = getDayjs();
 
@@ -28,16 +29,21 @@ const CustomCalendar = ({
     { start: '17:15', end: '19:00' },
   ]); // Default school slots
 
+  const prevDatesRef = useRef({ start: null, end: null });
+
   const handleDatesSet = (arg) => {
-    setCurrentView && setCurrentView(arg.view.type);
-    switch (arg.view.type) {
-      case 'timeGridWeek': {
-        const startDate = d(arg.start);
-        const weekNumber = startDate.week();
-        setCurrentWeek && setCurrentWeek(weekNumber);
-        break;
-      }
+    if (
+      setCalendarViewDates &&
+      (prevDatesRef.current.start !== arg.startStr ||
+        prevDatesRef.current.end !== arg.endStr)
+    ) {
+      setCalendarViewDates({
+        start: arg.start,
+        end: arg.end,
+      });
+      prevDatesRef.current = { start: arg.startStr, end: arg.endStr };
     }
+    setCurrentView && setCurrentView(arg.view.type);
   };
 
   const fetchSlots = async () => {
@@ -103,7 +109,7 @@ const CustomCalendar = ({
         slotMinTime={slots[0].start}
         slotMaxTime={slots[slots.length - 1].end}
         datesSet={handleDatesSet}
-        events={[...backgroundEvents, ...events]}
+        events={[...backgroundEvents, ...events, ...aiEvents]}
       />
       {isDisabled && disabledText && (
         <Center
@@ -126,13 +132,14 @@ const CustomCalendar = ({
 CustomCalendar.propTypes = {
   initialView: PropTypes.string,
   availableViews: PropTypes.string,
-  setCurrentWeek: PropTypes.func,
   setCurrentView: PropTypes.func,
+  setCalendarViewDates: PropTypes.func,
   isDisabled: PropTypes.bool,
   disabledText: PropTypes.string,
   initialSchoolYear: PropTypes.number.isRequired,
   backgroundEvents: PropTypes.array,
   events: PropTypes.array,
+  aiEvents: PropTypes.array,
 };
 
 export default CustomCalendar;

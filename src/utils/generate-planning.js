@@ -2,14 +2,14 @@ import { findAvailableEntities } from './planning-utils';
 import { supabase } from './supabaseClient';
 import getDayjs from './getDayjs';
 
-const firstWeekOfSchool = 37; // Rentrée: 1ère semaine de septembre
+const firstWeekOfSchool = 35; // Rentrée: 1ère semaine de septembre
 const nbHoursPerLesson = 3.5;
 const initialSchoolYear = 2024;
 
 const d = getDayjs();
 
 // Créé une "lesson" pour chaque créneau horaire disponible pour une classe donnée et une semaine donnée
-export const generatePlanning = async ({ class_id, week }) => {
+export const generatePlanning = async ({ class_id, week, dontCreate }) => {
   // Logique globale:
   // 1.1/ Récupérer les dispos des classes (table class_availabilities) => available_weeks
   // 1.2/ Récupérer les créneaux horaires par jour (table time_slots)
@@ -27,9 +27,9 @@ export const generatePlanning = async ({ class_id, week }) => {
   // 8/ Soustraire le nb de lessons à faire pour la matière choisie
 
   const { data: classData, error: classesError } = await supabase
-    .from('class_availabilities')
-    .select()
-    .eq('class_id', class_id)
+    .from('classes')
+    .select('*')
+    .eq('id', class_id)
     .single();
   if (classesError)
     return (
@@ -53,7 +53,8 @@ export const generatePlanning = async ({ class_id, week }) => {
 
   const { data: courses, error: coursesError } = await supabase
     .from('courses')
-    .select();
+    .select()
+    .eq('school_field_level_id', classData.school_field_level_id);
   if (coursesError)
     return (
       console.error(
@@ -74,8 +75,14 @@ export const generatePlanning = async ({ class_id, week }) => {
     return console.log('Pas de cours pour cette semaine');
 
   // Semaine par rapport à la rentrée scolaire
-  const realWeek = (week + firstWeekOfSchool) % 52;
-  const year = initialSchoolYear + Math.floor((week + firstWeekOfSchool) / 52);
+  const realWeek =
+    (week +
+      firstWeekOfSchool -
+      2 +
+      Math.floor((week + firstWeekOfSchool - 2) / 52)) %
+    52;
+  const year =
+    initialSchoolYear + Math.floor((week + firstWeekOfSchool - 2) / 52);
   const semester = week <= 26 ? 1 : 2;
 
   const weekDays = Array.from(
@@ -86,6 +93,27 @@ export const generatePlanning = async ({ class_id, week }) => {
         .week(realWeek)
         .day(i + 1) // 0 = dimanche, 1 = lundi, ..., 6 = samedi
   );
+
+  const { data: rooms, error: roomsError } = await supabase
+    .from('classroom')
+    .select();
+  if (roomsError)
+    return console.error(
+      'Erreur lors de la récupération des salles :',
+      roomsError
+    );
+
+  const { data: teachers, error: teachersError } = await supabase
+    .from('users_hackathon')
+    .select()
+    .eq('role', 'teacher');
+  if (teachersError)
+    return console.error(
+      'Erreur lors de la récupération des professeurs :',
+      teachersError
+    );
+
+  let lessonsToCreate = [];
 
   for (const day of weekDays) {
     if (isHoliday(day)) {
@@ -110,6 +138,14 @@ export const generatePlanning = async ({ class_id, week }) => {
             .eq('start_time', timeSlot.start_time)
             .eq('end_time', timeSlot.end_time);
 
+        const currentExistingLesson = lessonsToCreate.find(
+          (lesson) =>
+            lesson.class_id === class_id &&
+            lesson.date === day.format('YYYY-MM-DD') &&
+            lesson.start_time === timeSlot.start_time &&
+            lesson.end_time === timeSlot.end_time
+        );
+
         if (existingLessonsError) {
           console.error(
             'Erreur lors de la récupération des leçons existantes :',
@@ -117,25 +153,9 @@ export const generatePlanning = async ({ class_id, week }) => {
           );
         }
 
-        if (existingLessons.length > 0) {
-          console.log('Leçon déjà existante');
+        if (existingLessons.length > 0 || currentExistingLesson) {
           continue;
         }
-
-        const rooms = await findAvailableEntities(
-          'classroom',
-          'classroom_id',
-          day,
-          timeSlot.start_time,
-          timeSlot.end_time
-        );
-        const teachers = await findAvailableEntities(
-          'users_hackathon',
-          'teacher_id',
-          day,
-          timeSlot.start_time,
-          timeSlot.end_time
-        );
 
         if (rooms.length === 0 || teachers.length === 0) {
           console.log('Pas de salle ou de professeur disponible');
@@ -145,27 +165,28 @@ export const generatePlanning = async ({ class_id, week }) => {
         const room = rooms[0];
         const teacher = teachers[0];
 
-        // Créer l'entrée dans la table lessons
-        const { error: lessonError } = await supabase.from('lessons').insert([
-          {
-            class_id: class_id,
-            course_id: course.id,
-            teacher_id: teacher.id,
-            classroom_id: room.id,
-            date: day.format('YYYY-MM-DD'),
-            start_time: timeSlot.start_time,
-            end_time: timeSlot.end_time,
-          },
-        ]);
-
-        if (lessonError) {
-          console.error(
-            'Erreur lors de la création de la leçon :',
-            lessonError
-          );
-        }
+        lessonsToCreate.push({
+          class_id: class_id,
+          course_id: course.id,
+          teacher_id: teacher.id,
+          classroom_id: room.id,
+          date: day.format('YYYY-MM-DD'),
+          start_time: timeSlot.start_time,
+          end_time: timeSlot.end_time,
+        });
       }
     }
+  }
+
+  if (dontCreate) {
+    return lessonsToCreate;
+  }
+
+  const { error: lessonError } = await supabase
+    .from('lessons')
+    .insert(lessonsToCreate);
+  if (lessonError) {
+    console.error('Erreur lors de la création de la leçon :', lessonError);
   }
 };
 

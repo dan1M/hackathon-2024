@@ -5,6 +5,7 @@ import {
   Flex,
   Heading,
   Select,
+  Spinner,
   Text,
   useToast,
 } from '@chakra-ui/react';
@@ -15,6 +16,9 @@ import CustomCalendar from '../components/custom-calendar';
 import { supabase } from '../utils/supabaseClient';
 import YearWeeksGrid from '../components/YearWeeksGrid';
 import { Draggable } from '@fullcalendar/interaction/index.js';
+import { generatePlanning } from '../utils/generate-planning';
+import { BsStars } from 'react-icons/bs';
+import { FaRegCalendarPlus } from 'react-icons/fa';
 
 const initialSchoolYear = 2024;
 
@@ -23,12 +27,17 @@ const PlanningsPage = () => {
   const d = getDayjs();
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState();
-  const [currentWeek, setCurrentWeek] = useState(d().week());
   const [currentView, setCurrentView] = useState('multiMonthYear');
+  const [calendarViewDates, setCalendarViewDates] = useState({
+    start: d().toDate(),
+    end: d().toDate(),
+  });
   const [classCoursesToPlace, setClassCoursesToPlace] = useState([]);
   const [classSchoolWeeks, setClassSchoolWeeks] = useState([]);
   const [classExistingLessons, setClassExistingLessons] = useState([]);
   const [selectedSemester, setSelectedSemester] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [aiLessonsList, setAiLessonsList] = useState([]);
 
   const fetchClasses = async () => {
     try {
@@ -65,6 +74,65 @@ const PlanningsPage = () => {
     fetchClasses();
   };
 
+  const getAIclassLessons = async () => {
+    if (!selectedClass) return;
+    if (!classCoursesToPlace.length) {
+      t({
+        title: 'Aucune matière à placer',
+        description: `Il n'y a aucune matière à placer pour la classe ${
+          classes.find((classe) => classe.id == selectedClass).name
+        }`,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (
+      !classes.find((classe) => classe.id == selectedClass).available_weeks
+        .length
+    ) {
+      t({
+        title: 'Pas de semaine de cours',
+        description: `Il n'y a aucune semaine de cours pour la classe ${
+          classes.find((classe) => classe.id == selectedClass).name
+        }`,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const availableWeeks = classes
+      .find((classe) => classe.id == selectedClass)
+      .available_weeks.filter((week) => {
+        const realWeek = (week + firstWeekOfSchool - 1) % 52;
+        const year =
+          initialSchoolYear + Math.floor((week + firstWeekOfSchool - 1) / 52);
+        const weekStart = d().year(year).week(realWeek).startOf('week');
+        const weekEnd = d().year(year).week(realWeek).endOf('week');
+        return (
+          d(calendarViewDates.start).isBefore(weekEnd) &&
+          d(calendarViewDates.end).isAfter(weekStart)
+        );
+      });
+
+    let aiLessons = [];
+    setIsLoading(true);
+    // Call to generatePlanningWithAI for each week
+    for (const week of availableWeeks) {
+      const weekLessons = await generatePlanning({
+        class_id: selectedClass,
+        week: week,
+        dontCreate: true,
+      });
+      aiLessons.push(...weekLessons);
+    }
+    setAiLessonsList(aiLessons);
+    setIsLoading(false);
+  };
+
   const generateClassPlanning = async () => {
     if (!selectedClass) return;
     if (!classCoursesToPlace.length) {
@@ -94,6 +162,39 @@ const PlanningsPage = () => {
       });
       return;
     }
+    const availableWeeks = classes
+      .find((classe) => classe.id == selectedClass)
+      .available_weeks.filter((week) => {
+        const realWeek = (week + firstWeekOfSchool - 1) % 52;
+        const year =
+          initialSchoolYear + Math.floor((week + firstWeekOfSchool - 1) / 52);
+        const weekStart = d().year(year).week(realWeek).startOf('week');
+        const weekEnd = d().year(year).week(realWeek).endOf('week');
+        return (
+          d(calendarViewDates.start).isBefore(weekEnd) &&
+          d(calendarViewDates.end).isAfter(weekStart)
+        );
+      });
+
+    setIsLoading(true);
+    for (const week of availableWeeks) {
+      await generatePlanning({
+        class_id: selectedClass,
+        week: week,
+      });
+      getClassExistingLessons();
+    }
+    setIsLoading(false);
+
+    t({
+      title: 'Cours placés',
+      description: `Les cours de la classe ${
+        classes.find((classe) => classe.id == selectedClass).name
+      } ont été placés`,
+      status: 'success',
+      duration: 5000,
+      isClosable: true,
+    });
   };
 
   const getClassCoursesToPlace = async () => {
@@ -290,23 +391,50 @@ const PlanningsPage = () => {
         </Box>
         <Flex
           justify={'space-between'}
-          hidden={!selectedClass || classCoursesToPlace.length === 0}
+          hidden={
+            !selectedClass ||
+            classCoursesToPlace.length === 0 ||
+            (currentView === 'timeGridWeek' &&
+              !classSchoolWeeks.includes(
+                d(calendarViewDates.start).week() - firstWeekOfSchool + 1
+              ))
+          }
         >
-          <Button bgColor={'blue.100'} onClick={generateClassPlanning}>
-            Placement automatique (
-            {currentView === 'multiMonthYear'
-              ? 'Semestre'
-              : currentView === 'dayGridMonth'
-              ? 'Mois'
-              : 'Semaine'}
-            )
+          <Button
+            bgColor={'blue.100'}
+            onClick={generateClassPlanning}
+            isDisabled={isLoading}
+          >
+            <FaRegCalendarPlus style={{ marginRight: '.5rem' }} />
+            Placement automatique
           </Button>
+          {isLoading && <Spinner />}
+          <Flex flexDir={'column'} gap={4}>
+            <Button
+              bgColor={'blue.100'}
+              onClick={getAIclassLessons}
+              isDisabled={isLoading}
+            >
+              <BsStars style={{ marginRight: '.5rem' }} />
+              Placement optimisé par IA
+            </Button>
+            <Flex justify={'space-around'} hidden={aiLessonsList.length === 0}>
+              <Button
+                bgColor={'green.100'}
+                onClick={() => setAiLessonsList([])}
+              >
+                Accepter
+              </Button>
+              <Button bgColor={'red.200'} onClick={() => setAiLessonsList([])}>
+                Refuser
+              </Button>
+            </Flex>
+          </Flex>
         </Flex>
         <CustomCalendar
           initialSchoolYear={initialSchoolYear}
           initialView={'multiMonthYear'}
           availableViews={'multiMonthYear,dayGridMonth,timeGridWeek'}
-          setCurrentWeek={setCurrentWeek}
           backgroundEvents={
             classes &&
             classes
@@ -333,13 +461,23 @@ const PlanningsPage = () => {
           }
           events={classExistingLessons.map((lesson) => ({
             id: lesson.id,
-            title: lesson.course_id,
+            title: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
+              ?.name,
+            start: `${lesson.date}T${lesson.start_time}`,
+            end: `${lesson.date}T${lesson.end_time}`,
+            color: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
+              ?.color,
+          }))}
+          aiEvents={aiLessonsList.map((lesson) => ({
+            title: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
+              ?.name,
             start: `${lesson.date}T${lesson.start_time}`,
             end: `${lesson.date}T${lesson.end_time}`,
             color: classCoursesToPlace.find((cc) => cc.id == lesson.course_id)
               ?.color,
           }))}
           setCurrentView={setCurrentView}
+          setCalendarViewDates={setCalendarViewDates}
           isDisabled={!selectedClass}
           disabledText={
             selectedClass
