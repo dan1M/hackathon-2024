@@ -1,3 +1,5 @@
+/* Styles globaux */
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -9,8 +11,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body,
 #root {
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100%;
 }
